@@ -16,13 +16,11 @@ export class SystemConfigValue extends NumberValueType {
 
     constructor(
         ID: number,
-        type: ValueType,
-        page: number,
         configType: SystemConfigType,
         name: string,
         game: Arcadable
     ) {
-        super(ID, type, page, name, game);
+        super(ID, ValueType.systemPointer, name, game);
         this.configType = configType;
     }
 
@@ -54,7 +52,6 @@ export class SystemConfigValue extends NumberValueType {
             ID: this.ID,
             name: this.name,
             type: this.type,
-            page: this.page,
             configType: this.configType
         });
     }

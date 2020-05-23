@@ -86,8 +86,6 @@ export class EvaluationValue extends NumberValueType {
 
     constructor(
       ID: number,
-      type: ValueType,
-      page: number,
       left: NumberValueTypePointer<NumberValueType>,
       right: NumberValueTypePointer<NumberValueType>,
       evaluationOperator: EvaluationOperator,
@@ -95,7 +93,7 @@ export class EvaluationValue extends NumberValueType {
       name: string,
       game: Arcadable
     ) {
-        super(ID, type, page, name, game);
+        super(ID, ValueType.evaluation, name, game);
         this.left = left;
         this.right = right;
         this.evaluationOperator = evaluationOperator;
@@ -168,6 +166,10 @@ export class EvaluationValue extends NumberValueType {
                 result =  -1;
                 break;
         }
+        console.log('a ' + this.evaluationOperator);
+        console.log('b ' + result);
+        console.log('c ' + left);
+        console.log('d ' + right);
 
         if (this.isStatic) {
             this._STATIC_RESULT = result;
@@ -193,7 +195,6 @@ export class EvaluationValue extends NumberValueType {
           ID: this.ID,
           name: this.name,
           type: this.type,
-          page: this.page,
           evaluationOperator: this.evaluationOperator,
           left: this.left,
           right: this.right,

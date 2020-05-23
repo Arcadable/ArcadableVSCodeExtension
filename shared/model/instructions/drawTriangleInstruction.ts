@@ -70,8 +70,6 @@ export class DrawTriangleInstruction extends Instruction {
 
     constructor(
         ID: number,
-        instructionType: InstructionType,
-        page: number,
         colorValue: NumberValueTypePointer<NumberValueType>,
         x1Value: NumberValueTypePointer<NumberValueType>,
         y1Value: NumberValueTypePointer<NumberValueType>,
@@ -82,7 +80,7 @@ export class DrawTriangleInstruction extends Instruction {
         name: string,
         game: Arcadable
     ) {
-        super(ID, instructionType, page, name, game);
+        super(ID, InstructionType.DrawTriangle, name, game);
         this.colorValue = colorValue;
         this.x1Value = x1Value;
         this.y1Value = y1Value;
@@ -128,7 +126,6 @@ export class DrawTriangleInstruction extends Instruction {
             ID: this.ID,
             name: this.name,
             instructionType: this.instructionType,
-            page: this.page,
             colorValue: this.colorValue,
             x1Value: this.x1Value,
             y1Value: this.y1Value,

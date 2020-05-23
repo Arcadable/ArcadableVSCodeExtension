@@ -25,14 +25,12 @@ export class NumberValue extends NumberValueType {
 
     constructor(
         ID: number,
-        type: ValueType,
-        page: number,
         value: number,
         size: number,
         name: string,
         game: Arcadable
     ) {
-        super(ID, type, page, name, game);
+        super(ID, ValueType.number, name, game);
         this.value = value;
         this.size = size;
     }
@@ -67,7 +65,6 @@ export class NumberValue extends NumberValueType {
             ID: this.ID,
             name: this.name,
             type: this.type,
-            page: this.page,
             value: this.value,
             size: this.size
         });

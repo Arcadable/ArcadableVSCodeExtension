@@ -11,7 +11,7 @@ import { Emulator } from './emulator';
 
 let client: LanguageClient;
 let currentPanel: vscode.WebviewPanel | undefined = undefined;
-
+let emulator: Emulator;
 export function activate(context: ExtensionContext) {
 	let serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
@@ -46,7 +46,7 @@ export function activate(context: ExtensionContext) {
 
 	const arcLog = vscode.window.createOutputChannel("Arcadable");
 
-	const emulator = new Emulator(arcLog);
+	this.emulator = new Emulator(arcLog);
 	let disposable = vscode.commands.registerCommand('arcadable-emulator.start', () => {
 		const columnToShowIn = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
@@ -55,7 +55,7 @@ export function activate(context: ExtensionContext) {
 		if (this.currentPanel) {
 			this.currentPanel.reveal(columnToShowIn);
 		} else {
-			this.currentPanel = emulator.openEmulatorWindow(context, columnToShowIn);
+			this.currentPanel = this.emulator.openEmulatorWindow(context, columnToShowIn);
 		}
 	});
 }

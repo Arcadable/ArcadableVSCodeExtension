@@ -68,11 +68,10 @@ export abstract class Instruction extends LogicElement {
     constructor(
     	ID: number,
     	instructionType: InstructionType,
-    	page: number,
     	name: string,
     	game: Arcadable
     ) {
-    	super(ID, page, name, game);
+    	super(ID, name, game);
     	this.instructionType = instructionType;
     }
 
@@ -83,7 +82,6 @@ export abstract class Instruction extends LogicElement {
     		ID: this.ID,
     		name: this.name,
     		instructionType: this.instructionType,
-    		page: this.page,
     	});
     }
 }

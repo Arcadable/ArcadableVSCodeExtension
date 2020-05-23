@@ -24,14 +24,12 @@ export class PixelValue extends NumberValueType {
 
     constructor(
         ID: number,
-        type: ValueType,
-        page: number,
         xCalc: NumberValueTypePointer<NumberValueType>,
         yCalc: NumberValueTypePointer<NumberValueType>,
         name: string,
         game: Arcadable
     ) {
-        super(ID, type, page, name, game);
+        super(ID, ValueType.pixelIndex, name, game);
         this.XCalc = xCalc;
         this.YCalc = yCalc;
     }
@@ -81,7 +79,6 @@ export class PixelValue extends NumberValueType {
             ID: this.ID,
             name: this.name,
             type: this.type,
-            page: this.page,
             xCalc: this.XCalc.ID,
             yCalc: this.YCalc.ID
         });

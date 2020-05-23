@@ -75,7 +75,7 @@ export class Arcadable {
 
     	this.running = true;
     	while (this.running) {
-    		this.waitSubjects.forEach(s => s.next());
+			this.waitSubjects.forEach(s => s.next());
     		await this.step();
     	}
     }
@@ -85,7 +85,7 @@ export class Arcadable {
     }
 
     async step() {
-    	this.resetCalled.next();
+		this.resetCalled.next();
     	this.waitSubjects = [];
     	const currentMillis = new Date().getTime();
     	if (currentMillis - this.prevMillis < this.systemConfig.targetMillisPerFrame) {
@@ -107,7 +107,6 @@ export class Arcadable {
     	const rootInstructionSet = this.instructionSets[
     		this.rootInstructionSet
     	] as InstructionSet;
-
     	rootInstructionSet.instructions.forEach(async (instructionPointer, i) => {
     		if (this.wait) {
     			const waitFor = new Subject<void>();
@@ -134,13 +133,12 @@ export class Arcadable {
     		await lastSubject.pipe(take(1)).toPromise();
     	} else {
     		this.doExecute(action, executionOrder);
-    	}
+		}
     }
 
     async doExecute(action: (executionOrder: number[]) => any, executionOrder: number[]) {
     	const lastSubject = new Subject<void>();
-
-    	const actions = action(executionOrder) || [];
+    	const actions: any[] = action(executionOrder) || [];
     	(this.wait ? actions.reverse() : actions).forEach(async (a: (executionOrder: number[]) => any, i: number) => {
     		if (this.wait) {
     			const waitFor = new Subject<void>();
@@ -352,7 +350,7 @@ export class Arcadable {
     	rootSet.instructions.forEach(i => {
     		tempBinaryString += this.makeLength(i.ID.toString(2), 16);
     	});
-    	Object.keys(this.instructionSets).filter(k => !this.instructionSets[Number(k)].isRoot).forEach(k => {
+    	Object.keys(this.instructionSets).filter(k => +k !== this.rootInstructionSet).forEach(k => {
     		tempBinaryString += this.makeLength(this.instructionSets[Number(k)].ID.toString(2), 16);
     		tempBinaryString += this.makeLength(this.instructionSets[Number(k)].size.toString(2), 16);
     		this.instructionSets[Number(k)].instructions.forEach(i => {

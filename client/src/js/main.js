@@ -3,77 +3,19 @@ const vscode = acquireVsCodeApi();
 const canvas = document.getElementById('canvasEl');
 const tempCanvas = document.getElementById('textCanvasEl');
 const canvasContext = canvas.getContext('2d');
-const tempCanvasContext = textCanvas.getContext('2d');
-
-window.addEventListener('message', event => {
-    const message = event.data;
-    switch (message.command) {
-        case 'setDimensions':
-            canvas.setAttribute('width', message.width);
-            canvas.setAttribute('height', message.height);
-            textCanvas.setAttribute('width', message.width);
-            textCanvas.setAttribute('height', message.height);
-            break;
-        case 'getPixel': 
-            const data = canvasContext.getImageData(
-                message.x,
-                message.y,
-                1,
-                1
-            ).data;
-            const color = (data[0] << 16) + (data[1] << 8) + (data[2]);
-            vscode.postMessage({
-                command: 'getPixelResult',
-                color
-            })
-            break;
-        case 'clear':
-            clear(canvasContext, tempCanvasContext);
-            break;
-        case 'drawCircle':
-            drawCircle(canvasContext, tempCanvasContext, message.color, message.centerX, message.centerY, message.radius);
-            break;
-        case 'fillCircle':
-            fillCircle(canvasContext, tempCanvasContext, message.color, message.centerX, message.centerY, message.radius);
-            break;
-        case 'drawLine':
-            drawLine(canvasContext, tempCanvasContext, message.lineColor, message.pos1X, message.pos1Y, message.pos2X, message.pos2Y);
-            break;
-        case 'drawPixel':
-            drawPixel(canvasContext, tempCanvasContext, message.pixelColor, message.x, message.y);
-            break;
-        case 'drawRect':
-            drawRect(canvasContext, tempCanvasContext, message.topLeftDrawX, message.topLeftDrawY, message.width, message.height);
-            break;
-        case 'fillRect':
-            fillRect(canvasContext, tempCanvasContext, message.topLeftDrawX, message.topLeftDrawY, message.width, message.height);
-            break;
-        case 'drawText':
-            drawText(canvasContext, tempCanvasContext, message.text, message.scale, message.pixelTextX, message.pixelTextY);
-            break;
-        case 'drawTriangle':
-            drawTriangle(canvasContext, tempCanvasContext, message.triangleColor, message.pixel1X, message.pixel1Y, message.pixel2X, message.pixel2Y, message.pixel3X, message.pixel3Y);
-            break;
-        case 'fillTriangle':
-            fillTriangle(canvasContext, tempCanvasContext, message.triangleColor, message.pixel1X, message.pixel1Y, message.pixel2X, message.pixel2Y, message.pixel3X, message.pixel3Y);
-            break;
-        case 'setRotation':
-            setRotation(canvasContext, tempCanvasContext, message.rotation);
-            break;
-    }
-});
+const tempCanvasContext = tempCanvas.getContext('2d');
 
 
-function clear(canvasContext, tempCanvasContext) {
+function clear(canvasContext) {
     canvasContext.clearRect(0, 0, canvasContext.canvas.width, canvasContext.canvas.height);
 }
 
-function drawCircle(canvasContext, tempCanvasContext, color, centerX, centerY, radius) {
+function drawCircle(canvasContext, color, centerX, centerY, radius) {
     canvasContext.fillStyle = getHex(color);
     aliasedStrokeCircle(Math.floor(centerX), Math.floor(centerY), radius);
 }
 
-function fillCircle(canvasContext, tempCanvasContext, color, centerX, centerY, radius) {
+function fillCircle(canvasContext, color, centerX, centerY, radius) {
     canvasContext.fillStyle = getHex(color);
     aliasedFilledCircle(Math.floor(centerX), Math.floor(centerY), radius);
 }
@@ -100,13 +42,13 @@ function drawLine(canvasContext, tempCanvasContext, lineColor, pos1X, pos1Y, pos
     canvasContext.drawImage(tempCanvasContext.canvas, 0, 0);
 }
 
-function drawPixel(canvasContext, tempCanvasContext, pixelColor, x, y) {
+function drawPixel(canvasContext, pixelColor, x, y) {
     canvasContext.fillStyle = getHex(pixelColor);
     canvasContext.fillRect(Math.floor(x), Math.floor(y), 1, 1);
 }
 
-function drawRect(canvasContext, tempCanvasContext, topLeftDrawX, topLeftDrawY, width, height) {
-    canvasContext.strokeStyle = getHex(drawRectColor);
+function drawRect(canvasContext, color, topLeftDrawX, topLeftDrawY, width, height) {
+    canvasContext.strokeStyle = getHex(color);
     canvasContext.strokeRect(
         Math.floor(topLeftDrawX) + 0.5,
         Math.floor(topLeftDrawY) + 0.5,
@@ -115,9 +57,9 @@ function drawRect(canvasContext, tempCanvasContext, topLeftDrawX, topLeftDrawY, 
     );
 }
 
-function fillRect(canvasContext, tempCanvasContext, topLeftDrawX, topLeftDrawY, width, height) {
-    canvasContext.strokeStyle = getHex(drawRectColor);
-    canvasContext.fillStyle = getHex(drawRectColor);
+function fillRect(canvasContext, color, topLeftDrawX, topLeftDrawY, width, height) {
+    canvasContext.strokeStyle = getHex(color);
+    canvasContext.fillStyle = getHex(color);
     canvasContext.fillRect(
         Math.floor(topLeftDrawX) + 0.5,
         Math.floor(topLeftDrawY) + 0.5,
@@ -132,7 +74,7 @@ function fillRect(canvasContext, tempCanvasContext, topLeftDrawX, topLeftDrawY, 
     );
 }
 
-function drawText(canvasContext, tempCanvasContext, text, scale, pixelTextX, pixelTextY) {
+function drawText(canvasContext, tempCanvasContext, color, text, scale, pixelTextX, pixelTextY) {
     tempCanvasContext.font = 'lighter ' + (8 * scale) + 'px "Lucida Console", Monaco, monospace';
 
     tempCanvasContext.clearRect(
@@ -170,7 +112,7 @@ function drawText(canvasContext, tempCanvasContext, text, scale, pixelTextX, pix
             const pixelIndex = i / 4;
             const pixelY = Math.floor(pixelIndex / canvasContext.canvas.width);
             const pixelX = pixelIndex - canvasContext.canvas.width * pixelY;
-            setPixel(pixelX, pixelY, textColor, data);
+            setPixel(pixelX, pixelY, color, data);
         }
     }
     canvasContext.putImageData(imgData, 0, 0);
@@ -388,3 +330,62 @@ function aliasedStrokeCircle(xc, yc, r) {
         game.canvasContext.fillRect(xc + y - 1, yc + x, 1, 1);
     }
 }
+
+
+window.addEventListener('message', event => {
+    const message = event.data;
+    switch (message.command) {
+        case 'setDimensions':
+            canvas.setAttribute('width', message.width);
+            canvas.setAttribute('height', message.height);
+            tempCanvas.setAttribute('width', message.width);
+            tempCanvas.setAttribute('height', message.height);
+            break;
+        case 'getPixel': 
+            const data = canvasContext.getImageData(
+                message.x,
+                message.y,
+                1,
+                1
+            ).data;
+            const color = (data[0] << 16) + (data[1] << 8) + (data[2]);
+            vscode.postMessage({
+                command: 'getPixelResult',
+                color
+            })
+            break;
+        case 'clear':
+            clear(canvasContext);
+            break;
+        case 'drawCircle':
+            drawCircle(canvasContext, message.color, message.centerX, message.centerY, message.radius);
+            break;
+        case 'fillCircle':
+            fillCircle(canvasContext, message.color, message.centerX, message.centerY, message.radius);
+            break;
+        case 'drawLine':
+            drawLine(canvasContext, tempCanvasContext, message.lineColor, message.pos1X, message.pos1Y, message.pos2X, message.pos2Y);
+            break;
+        case 'drawPixel':
+            drawPixel(canvasContext, message.pixelColor, message.x, message.y);
+            break;
+        case 'drawRect':
+            drawRect(canvasContext, message.drawRectColor, message.topLeftDrawX, message.topLeftDrawY, message.width, message.height);
+            break;
+        case 'fillRect':
+            fillRect(canvasContext, message.drawRectColor, message.topLeftDrawX, message.topLeftDrawY, message.width, message.height);
+            break;
+        case 'drawText':
+            drawText(canvasContext, tempCanvasContext, message.textColor, message.text, message.scale, message.pixelTextX, message.pixelTextY);
+            break;
+        case 'drawTriangle':
+            drawTriangle(canvasContext, tempCanvasContext, message.triangleColor, message.pixel1X, message.pixel1Y, message.pixel2X, message.pixel2Y, message.pixel3X, message.pixel3Y);
+            break;
+        case 'fillTriangle':
+            fillTriangle(canvasContext, tempCanvasContext, message.triangleColor, message.pixel1X, message.pixel1Y, message.pixel2X, message.pixel2Y, message.pixel3X, message.pixel3Y);
+            break;
+        case 'setRotation':
+            setRotation(canvasContext, tempCanvasContext, message.rotation);
+            break;
+    }
+});

@@ -16,13 +16,11 @@ export class DigitalInputValue extends NumberValueType {
 
     constructor(
         ID: number,
-        type: ValueType,
-        page: number,
         index: number,
         name: string,
         game: Arcadable
       ) {
-          super(ID, type, page, name, game);
+          super(ID, ValueType.digitalInputPointer, name, game);
           this.index = index;
       }
 
@@ -54,7 +52,6 @@ export class DigitalInputValue extends NumberValueType {
             ID: this.ID,
             name: this.name,
             type: this.type,
-            page: this.page,
             index: this.index,
         });
     }

@@ -6,7 +6,6 @@ export class LogicElement {
     called: boolean = false;
     executionOrder: number[] = [];
     breakSet: boolean = false;
-    page: number;
 
     private _ID!: number;
     set ID(value: number) {
@@ -29,13 +28,11 @@ export class LogicElement {
 
     constructor(
         ID: number,
-        page: number,
         name: string,
         game: Arcadable
     ) {
         this.ID = ID;
         this.name = name;
-        this.page = page;
         this.game = game;
     }
 

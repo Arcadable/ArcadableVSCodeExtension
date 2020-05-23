@@ -55,8 +55,6 @@ export class DrawTextInstruction extends Instruction {
 
     constructor(
         ID: number,
-        instructionType: InstructionType,
-        page: number,
         colorValue: NumberValueTypePointer<NumberValueType>,
         scaleValue: NumberValueTypePointer<NumberValueType>,
         xValue: NumberValueTypePointer<NumberValueType>,
@@ -64,7 +62,7 @@ export class DrawTextInstruction extends Instruction {
         name: string,
         game: Arcadable
     ) {
-        super(ID, instructionType, page, name, game);
+        super(ID, InstructionType.DrawText, name, game);
         this.colorValue = colorValue;
         this.scaleValue = scaleValue;
         this.xValue = xValue;
@@ -103,7 +101,6 @@ export class DrawTextInstruction extends Instruction {
             ID: this.ID,
             name: this.name,
             instructionType: this.instructionType,
-            page: this.page,
             colorValue: this.colorValue,
             scale: this.scaleValue,
             text: this.textValue,

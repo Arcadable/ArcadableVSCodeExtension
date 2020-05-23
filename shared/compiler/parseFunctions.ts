@@ -188,7 +188,7 @@ export function ParseValueString(section: string, otherMatchWithType: RegExpMatc
 	const stringMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)String( *)=( *)(("([^\"]*)")|('([^\']*)'))END_OF_SECTION$/g) as RegExpMatchArray;
 	if (stringMatch) {
 		const valueRaw = stringMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
-		const value = valueRaw.charAt(0) === '"' ? valueRaw.replace('"', '') : valueRaw.replace('\'', '');
+		const value = valueRaw.charAt(0) === '"' ? valueRaw.replace(/"/g, '') : valueRaw.replace(/'/g, '');
 		result.value = {
 			type: ValueType.text,
 			value,

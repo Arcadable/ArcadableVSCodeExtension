@@ -35,15 +35,13 @@ export class RunConditionInstruction extends Instruction {
 
     constructor(
         ID: number,
-        instructionType: InstructionType,
-        page: number,
         evaluationValue: ValuePointer<Value>,
         successSet: InstructionSetPointer,
         failSet: InstructionSetPointer,
         name: string,
         game: Arcadable
     ) {
-        super(ID, instructionType, page, name, game);
+        super(ID, InstructionType.RunCondition, name, game);
         this.evaluationValue = evaluationValue;
         this.successSet = successSet;
         this.failSet = failSet;
@@ -69,7 +67,6 @@ export class RunConditionInstruction extends Instruction {
             ID: this.ID,
             name: this.name,
             instructionType: this.instructionType,
-            page: this.page,
             evaluationValue: this.evaluationValue,
             successSet: this.successSet,
             failSet: this.failSet

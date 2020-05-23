@@ -19,13 +19,11 @@ export class RunSetInstruction extends Instruction {
 
     constructor(
         ID: number,
-        instructionType: InstructionType,
-        page: number,
         set: InstructionSetPointer,
         name: string,
         game: Arcadable
     ) {
-        super(ID, instructionType, page, name, game);
+        super(ID, InstructionType.RunSet, name, game);
         this.set = set;
     }
 
@@ -45,7 +43,6 @@ export class RunSetInstruction extends Instruction {
             ID: this.ID,
             name: this.name,
             instructionType: this.instructionType,
-            page: this.page,
             set: this.set
         });
     }

@@ -32,15 +32,13 @@ export class ListValue<T extends Value> extends Value {
 
     constructor(
         ID: number,
-        type: ValueType,
-        page: number,
         currentIndex: number,
         size: number,
         values: ValuePointer<T>[],
         name: string,
         game: Arcadable
     ) {
-        super(ID, type, page, name, game);
+        super(ID, ValueType.list, name, game);
         this.values = values;
         this.size = size;
         this.currentIndex = currentIndex;
@@ -89,7 +87,6 @@ export class ListValue<T extends Value> extends Value {
             ID: this.ID,
             name: this.name,
             type: this.type,
-            page: this.page,
             values: this.values,
             size: this.size,
             currentIndex: this.currentIndex

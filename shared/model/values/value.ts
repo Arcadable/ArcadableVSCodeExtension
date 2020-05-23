@@ -48,11 +48,10 @@ export abstract class Value extends LogicElement {
     constructor(
     	ID: number,
     	type: ValueType,
-    	page: number,
     	name: string,
     	game: Arcadable
     ) {
-    	super(ID, page, name, game);
+    	super(ID, name, game);
     	this.type = type;
     }
 
@@ -65,7 +64,6 @@ export abstract class Value extends LogicElement {
     		ID: this.ID,
     		name: this.name,
     		type: this.type,
-    		page: this.page,
     	});
     }
 }

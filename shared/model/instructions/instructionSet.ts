@@ -18,26 +18,16 @@ export class InstructionSet extends LogicElement {
     get size(): number {
         return this._SIZE;
     }
-    private _IS_ROOT: boolean = false;
-    set isRoot(value: boolean) {
-        this._IS_ROOT = value;
-    }
-    get isRoot(): boolean {
-        return this._IS_ROOT;
-    }
 
 
     constructor(
         ID: number,
-        page: number,
-        isRoot: boolean,
         size: number,
         instructions: InstructionPointer[],
         name: string,
         game: Arcadable
     ) {
-        super(ID, page, name, game);
-        this.isRoot = isRoot;
+        super(ID, name, game);
         this.size = size;
         this.instructions = instructions;
     }
@@ -52,9 +42,7 @@ export class InstructionSet extends LogicElement {
         return JSON.stringify({
             ID: this.ID,
             name: this.name,
-            page: this.page,
             size: this.size,
-            isRoot: this.isRoot,
             instructions: this.instructions
         });
     }
@@ -62,6 +50,10 @@ export class InstructionSet extends LogicElement {
 export class InstructionSetPointer {
     ID!: number;
     game!: Arcadable;
+    constructor(ID: number, game: Arcadable) {
+    	this.ID = ID;
+    	this.game = game;
+    }
     execute(executionOrder: number[]) {
         return this.game.instructionSets[this.ID].execute();
     }

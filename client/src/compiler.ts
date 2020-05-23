@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value, InstructionType } from 'arcadable-shared';
+import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value, InstructionType, AnalogInputValue, DigitalInputValue, EvaluationValue, ListValue, NumberValue, PixelValue, SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType, ValuePointer, NumberArrayValueTypePointer, ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction, DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction, MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, NumberArrayValueType, InstructionSetPointer, InstructionSet, InstructionPointer } from 'arcadable-shared';
 import { SlowBuffer } from 'buffer';
 
 
@@ -62,14 +62,22 @@ export class ArcadableCompiler {
 		}[]);
 		this.compileResult.parseErrors = parseErrors;
 		if (parseErrors.length === 0) {
-			const mergedParseResult = this.checkAndMerge(parseResult);
-			this.compileResult.parseErrors = mergedParseResult.errors;
-			
+			const gameData = this.checkAndMerge(parseResult);
+			this.compileResult.parseErrors = gameData.errors;
 			if (this.compileResult.parseErrors.length === 0) {
-				this.compileResult.game.setGameLogic();
+				const rootInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
+				if (rootInstructionSet !== -1) {
+					this.compileResult.assignGameData(gameData);
+				} else {
+					this.compileResult.compileErrors.push({
+						file: '',
+						line: 0,
+						pos: 0,
+						error: 'Cannot find "Main" function'
+					})
+				}
 			}
 		}
-		//convert parsed file into game object
 		//add drawpixel and drawtext parsing
 		//add set list index and get list value instructions (mylist[9]) 
 		//if index is outside of list size, return 0
@@ -569,6 +577,7 @@ export class ArcadableCompiler {
 
 
 export class CompileResult {
+
 	game: Arcadable;
 	compileErrors: {file: string, line: number, pos: number, error: string}[];
 	parseErrors: {file: string, line: number, pos: number, error: string}[];
@@ -576,5 +585,246 @@ export class CompileResult {
 		this.game = new Arcadable(config);
 		this.compileErrors = [];
 		this.parseErrors = [];
+	}
+	
+	assignGameData(gameData: ParsedFile) {
+		const values = gameData.compressedValues.map((v, i) => {
+			switch(v.type) {
+				
+				case ValueType.analogInputPointer: {
+					return new AnalogInputValue(i, +v.value, '', this.game);
+				}
+				case ValueType.digitalInputPointer: {
+					return new DigitalInputValue(i, +v.value, '', this.game);
+				}
+				case ValueType.evaluation: {
+					return new EvaluationValue(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+v.value.left, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.right, this.game),
+						v.value.evaluation,
+						v.value.static,
+						'',
+						this.game
+					);
+				}
+				case ValueType.list: {
+					switch (v.value.type) {
+						case ValueType.analogInputPointer:
+						case ValueType.digitalInputPointer:
+						case ValueType.evaluation:
+						case ValueType.number:
+						case ValueType.pixelIndex:
+						case ValueType.systemPointer: {
+							return new ListValue(
+								i,
+								0,
+								v.value.values.length,
+								v.value.values.map(value => new NumberValueTypePointer<NumberValueType>(+value, this.game)),
+								'',
+								this.game
+							);
+						}
+						case ValueType.text: {
+							return new ListValue(
+								i,
+								0,
+								v.value.values.length,
+								v.value.values.map(value => new NumberArrayValueTypePointer<TextValue>(+value, this.game)),
+								'',
+								this.game
+							);
+						}
+					}
+
+				}
+				case ValueType.number: {
+					return new NumberValue(i, +v.value, 4, '', this.game);
+				}
+				case ValueType.pixelIndex: {
+					return new PixelValue(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+v.value.x, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.y, this.game),
+						'',
+						this.game
+					);
+				}
+				case ValueType.systemPointer: {
+					return new SystemConfigValue(i, +v.value, '', this.game);
+				}
+				case ValueType.text: {
+					return new TextValue(
+						i,
+						[...(v.value as string)].map(c => c.charCodeAt(0)),
+						(v.value as string).length,
+						'',
+						this.game
+					);
+				}
+			}
+		});
+		const instructions = gameData.compressedInstructions.map((inst, i) => {
+			switch(inst.type) {
+				case InstructionType.Clear : {
+					return new ClearInstruction(i, '', this.game);
+				}
+				case InstructionType.DrawCircle : {
+					return new DrawCircleInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						'',
+						this.game
+					);
+				}
+				case InstructionType.DrawLine : {
+					return new DrawLineInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						'',
+						this.game
+					);
+				}
+				/*case InstructionType.DrawPixel : {
+					return new DrawPixelInstruction();
+				}*/
+				case InstructionType.DrawRect : {
+					return new DrawRectInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						'',
+						this.game
+					);
+				}
+				/*case InstructionType.DrawText : {
+					return new DrawTextInstruction();
+				}*/
+				case InstructionType.DrawTriangle : {
+					return new DrawTriangleInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[5], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[6], this.game),
+						'',
+						this.game
+					);
+				}
+				case InstructionType.FillCircle : {
+					return new FillCircleInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						'',
+						this.game
+					);
+				}
+				case InstructionType.FillRect : {
+					return new FillRectInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						'',
+						this.game
+					);
+				}
+				case InstructionType.FillTriangle : {
+					return new FillTriangleInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[5], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[6], this.game),
+						'',
+						this.game
+					);
+				}
+				case InstructionType.MutateValue : {
+					if (values[+inst.params[0]].type === ValueType.text || values[+inst.params[0]].type === ValueType.list) {
+						return new MutateValueInstruction(
+							i,
+							new NumberArrayValueTypePointer<NumberArrayValueType>(+inst.params[0], this.game),
+							new NumberArrayValueTypePointer<NumberArrayValueType>(+inst.params[1], this.game),
+							'',
+							this.game
+						);
+					} else {
+						return new MutateValueInstruction(
+							i,
+							new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+							new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+							'',
+							this.game
+						);
+					}
+
+				}
+				case InstructionType.RunCondition : {
+					return new RunConditionInstruction(
+						i,
+						new NumberValueTypePointer<EvaluationValue>(+inst.params[0], this.game),
+						new InstructionSetPointer(+inst.params[1], this.game),
+						new InstructionSetPointer(+inst.params[2], this.game),
+						'',
+						this.game
+					);
+				}
+				case InstructionType.RunSet : {
+					return new RunSetInstruction(
+						i,
+						new InstructionSetPointer(+inst.params[0], this.game),
+						'',
+						this.game
+					);
+				}
+				case InstructionType.SetRotation : {
+					return new SetRotationInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						'',
+						this.game
+					);
+				}
+			}
+		});
+		const instructionSets = gameData.compressedInstructionSets.map((is, i) => new InstructionSet(
+			i,
+			is.instructions.length,
+			is.instructions.map(inst => 
+				new InstructionPointer(inst, this.game)
+			),
+			'',
+			this.game
+		));
+		const rootInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
+
+		this.game.setGameLogic(
+			values,
+			instructions,
+			instructionSets,
+			rootInstructionSet
+		);
 	}
 }

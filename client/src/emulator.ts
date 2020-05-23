@@ -8,7 +8,7 @@ import { ArcadableCompiler, CompileResult } from './compiler';
 export class Emulator {
 	getPixelCallback: (color: number) => {};
 	instructionSubscription: Subscription;
-
+	compileResult: CompileResult;
 	constructor(public log: vscode.OutputChannel) {
 		
 	}
@@ -55,6 +55,12 @@ export class Emulator {
 		return currentPanel;
 	}
 
+	closeEmulatorWindow() {
+		if(this.compileResult) {
+			this.compileResult.game.stop();
+		}
+	}
+
 	async loadGame(currentPanel: any) {
 		this.log.clear();
 		const startTime = process.hrtime();
@@ -91,14 +97,18 @@ export class Emulator {
 		}
 
 		this.log.show();
-
-		const game = compileResult.game;
+		this.compileResult = compileResult;
+		const game = this.compileResult.game;
+		console.log(game);
 		if (game) {
-	
+			if(this.instructionSubscription) {
+				this.instructionSubscription.unsubscribe();
+			}
 			this.instructionSubscription = game.drawInstruction.subscribe((instruction: any) => {
-				if (instruction.command = 'getPixel') {
+				if (instruction.command === 'getPixel') {
 					this.getPixelCallback = instruction.callback;
 				}
+				console.log(instruction);
 				(currentPanel as vscode.WebviewPanel).webview.postMessage(instruction);
 			});
 	
@@ -107,6 +117,8 @@ export class Emulator {
 				width: game.systemConfig.screenWidth,
 				height: game.systemConfig.screenHeight
 			});
+			console.log('start');
+			game.start();
 		}
 	}
 
@@ -230,6 +242,12 @@ export class Emulator {
 			}
 		);
 	
+		currentPanel.onDidDispose(() => {
+			if(this.compileResult) {
+				console.log('stop');
+				this.compileResult.game.stop();
+			}
+		})
 
 		const templateFilePath: vscode.Uri = vscode.Uri.file(path.join(context.extensionPath, 'client', 'src', 'html', 'index.html'));
 		const styleSrcUrl = currentPanel.webview.asWebviewUri(

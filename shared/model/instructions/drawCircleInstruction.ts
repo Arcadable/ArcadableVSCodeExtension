@@ -43,8 +43,6 @@ export class DrawCircleInstruction extends Instruction {
 
     constructor(
         ID: number,
-        instructionType: InstructionType,
-        page: number,
         colorValue: NumberValueTypePointer<NumberValueType>,
         radiusValue: NumberValueTypePointer<NumberValueType>,
         xValue: NumberValueTypePointer<NumberValueType>,
@@ -52,7 +50,7 @@ export class DrawCircleInstruction extends Instruction {
         name: string,
         game: Arcadable
     ) {
-        super(ID, instructionType, page, name, game);
+        super(ID, InstructionType.DrawCircle, name, game);
         this.colorValue = colorValue;
         this.radiusValue = radiusValue;
         this.xValue = xValue;
@@ -88,7 +86,6 @@ export class DrawCircleInstruction extends Instruction {
             ID: this.ID,
             name: this.name,
             instructionType: this.instructionType,
-            page: this.page,
             colorValue: this.colorValue,
             radiusValue: this.radiusValue,
             xValue: this.xValue,
