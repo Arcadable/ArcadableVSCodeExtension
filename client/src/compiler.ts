@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value, InstructionType } from 'arcadable-shared';
+import { SlowBuffer } from 'buffer';
 
 
 export class ArcadableCompiler {
@@ -62,9 +63,12 @@ export class ArcadableCompiler {
 		this.compileResult.parseErrors = parseErrors;
 		if (parseErrors.length === 0) {
 			const mergedParseResult = this.checkAndMerge(parseResult);
-            this.compileResult.parseErrors = mergedParseResult.errors;
+			this.compileResult.parseErrors = mergedParseResult.errors;
+			
+			if (this.compileResult.parseErrors.length === 0) {
+				this.compileResult.game.setGameLogic();
+			}
 		}
-		//todo check and merge duplicate values
 		//convert parsed file into game object
 		//add drawpixel and drawtext parsing
 		//add set list index and get list value instructions (mylist[9]) 
@@ -89,15 +93,339 @@ export class ArcadableCompiler {
 			imports: [],
 			values: [],
 			instructionSets: [],
-			errors: []
-		} as ParsedFile);
+			errors: [],
+			compressedValues: [],
+			compressedInstructions: [],
+			compressedInstructionSets: []
+		});
 
 		combinedResult = this.checkForReferenceProblems(combinedResult);
-
+		if (combinedResult.errors.length === 0) {
+			combinedResult = this.compress(combinedResult);
+		}
 		return combinedResult;
 	}
 
+	compress(data: ParsedFile): ParsedFile {
+
+		let compressedValues: {
+			type: ValueType,
+			value: any,
+			mutatable,
+			linked: {
+				name: string;
+				type: ValueType;
+				value: any;
+				line: number;
+				pos: number;
+				file: string;
+				compressedIndex?: number;
+			}[]
+		}[] = [];
+
+		data.values.forEach((v, index) => {
+			let valueIndex = -1;
+			let mutatable = false;
+			if (v.type === ValueType.number && (v.value  + '').charAt(0) === '.') {
+				v.value = '0' + v.value;
+			} else if (v.type === ValueType.number) {
+				v.value = '' + v.value;
+			}
+			if (data.instructionSets.findIndex(is => is.instructions.findIndex(i => i.type === InstructionType.MutateValue && i.params[0] === v.name) !== -1) === -1) {
+				valueIndex = compressedValues.findIndex(vc => !vc.mutatable && vc.type === v.type && JSON.stringify(vc.value) === JSON.stringify(v.value));
+			} else {
+				mutatable = true;
+			}
+			if (valueIndex === -1) {
+				valueIndex = compressedValues.push({
+					type: v.type,
+					value: v.value,
+					mutatable,
+					linked: []
+				}) - 1;
+			}
+
+			data.values[index].compressedIndex = valueIndex;
+			compressedValues[valueIndex].linked.push(v);
+		});
+
+
+		let compressedInstructions: {
+			type: InstructionType;
+			params: string[];
+			linked: {
+				line: number;
+				pos: number;
+				file: string;
+			}[];
+		}[] = [];
+		let compressedInstructionSets: {
+			instructions: number[];
+			linked: {
+				name: string;
+			}[];
+		}[] = [];
+		data.instructionSets.forEach((is, index) => {
+			const instructions: number[] = [];
+			is.instructions.forEach((i, index2) => {
+				let instructionIndex = compressedInstructions.findIndex(ic => ic.type === i.type && JSON.stringify(ic.params) === JSON.stringify(i.params));
+				if (instructionIndex === -1) {
+					instructionIndex = compressedInstructions.push({
+						type: i.type,
+						params: i.params,
+						linked: []
+					}) - 1;
+				}
+				data.instructionSets[index].instructions[index2].compressedIndex = instructionIndex;
+				compressedInstructions[instructionIndex].linked.push(i);
+				instructions.push(instructionIndex);
+			})
+
+			let instructionSetIndex = compressedInstructionSets.findIndex(isc => {
+				if (isc.instructions === instructions) return true;
+				if (isc.instructions == null || instructions == null) return false;
+				if (isc.instructions.length != instructions.length) return false;		  
+				for (var i = 0; i < isc.instructions.length; ++i) {
+				  if (isc.instructions[i] !== instructions[i]) return false;
+				}
+				return true;
+			});
+			if (instructionSetIndex === -1) {
+				instructionSetIndex = compressedInstructionSets.push({
+					instructions,
+					linked: []
+				}) - 1;
+			}
+			data.instructionSets[index].compressedIndex = instructionSetIndex;
+			compressedInstructionSets[instructionSetIndex].linked.push(is);
+		});
+
+
+		let optimized = true;
+		let optimizationLoops = 0;
+		while (optimized && optimizationLoops < 100) {
+			optimizationLoops++;
+			optimized = false;
+			compressedInstructionSets.forEach((is, setIndex) => {
+				compressedInstructions.forEach(i => {
+					if (i.type === InstructionType.RunSet && isNaN(+i.params[0]) && is.linked.findIndex(l => l.name === i.params[0]) !== -1) {
+						i.params[0] = setIndex.toString();
+						optimized = true;
+					}
+					if (i.type === InstructionType.RunCondition) {
+						if (isNaN(+i.params[1]) && is.linked.findIndex(l => l.name === i.params[1]) !== -1) {
+							i.params[1] = setIndex.toString();
+							optimized = true;
+						}
+						if (isNaN(+i.params[2]) && is.linked.findIndex(l => l.name === i.params[2]) !== -1) {
+							i.params[2] = setIndex.toString();
+							optimized = true;
+						}
+					}
+				});
+			});
+
+			compressedValues.forEach((v, valueIndex) => {
+				compressedInstructions.forEach(i => {
+					const paramIndexes = i.params.reduce((acc, curr, index) => (isNaN(+curr) && v.linked.findIndex(l => l.name === curr) !== -1) ? [...acc, index] : acc, []);
+					paramIndexes.forEach(p => {
+						i.params[p] = valueIndex.toString();
+						optimized = true;
+					});
+				});
+				compressedValues.forEach((v2, value2Index) => {
+					if (value2Index !== valueIndex) {
+						switch(v2.type) {
+							case ValueType.evaluation: {
+								if (isNaN(+v2.value.left) && v.linked.findIndex(l => l.name === v2.value.left) !== -1) {
+									v2.value.left = valueIndex.toString();
+									optimized = true;
+								}
+								if (isNaN(+v2.value.right) && v.linked.findIndex(l => l.name === v2.value.right) !== -1) {
+									v2.value.right = valueIndex.toString();
+									optimized = true;
+								}
+								break;
+							}
+							case ValueType.list: {
+								const listIndexes = v2.value.values.reduce((acc, curr, index) => (isNaN(+curr) && v.linked.findIndex(l => l.name === curr) !== -1) ? [...acc, index] : acc, []);
+								listIndexes.forEach(p => {
+									v2.value.values[p] = valueIndex.toString();
+									optimized = true;
+								});
+								break;
+							}
+							case ValueType.pixelIndex: {
+								if (isNaN(+v2.value.x) && v.linked.findIndex(l => l.name === v2.value.x) !== -1) {
+									v2.value.x = valueIndex.toString();
+									optimized = true;
+								}
+								if (isNaN(+v2.value.y) && v.linked.findIndex(l => l.name === v2.value.y) !== -1) {
+									v2.value.y = valueIndex.toString();
+									optimized = true;
+								}
+								break;
+							}
+						}
+					}
+				});
+			});
+			const indexChanges = {};
+			compressedValues = compressedValues.reduce((acc, curr, oldIndex) => {
+				const existingIndex = acc.findIndex(existing =>
+					!existing.mutatable &&
+					!curr.mutatable &&
+					existing.type === curr.type &&
+					JSON.stringify(existing.value) === JSON.stringify(curr.value)
+				);
+				if (existingIndex !== -1) {
+					indexChanges[oldIndex] = existingIndex;
+					acc[existingIndex].linked.push(...curr.linked);
+				} else if (oldIndex !== acc.length) {
+					indexChanges[oldIndex] = acc.length;
+				}
+
+				return existingIndex !== -1 ? acc : [...acc, curr];
+			}, [] as {
+				type: ValueType,
+				value: any,
+				mutatable,
+				linked: {
+					name: string;
+					type: ValueType;
+					value: any;
+					line: number;
+					pos: number;
+					file: string;
+					compressedIndex?: number;
+				}[]
+			}[]);
+			Object.keys(indexChanges).forEach(oldIndex => {
+				const newIndex = indexChanges[oldIndex];
+				compressedInstructions.forEach(i => {
+					const paramIndexes = i.params.reduce((acc, curr, index) => (!isNaN(+curr) && curr === oldIndex) ? [...acc, index] : acc, []);
+					paramIndexes.forEach(p => {
+						i.params[p] = newIndex.toString();
+						optimized = true;
+					});
+				});
+				compressedValues.forEach(v => {
+					switch(v.type) {
+						case ValueType.evaluation: {
+							if (!isNaN(+v.value.left) && v.value.left === oldIndex) {
+								v.value.left = newIndex.toString();
+								optimized = true;
+							}
+							if (!isNaN(+v.value.right) && v.value.left === oldIndex) {
+								v.value.right = newIndex.toString();
+								optimized = true;
+							}
+							break;
+						}
+						case ValueType.list: {
+							const listIndexes = v.value.values.reduce((acc, curr, index) => (!isNaN(+curr) && curr === oldIndex) ? [...acc, index] : acc, []);
+							listIndexes.forEach(p => {
+								v.value.values[p] = newIndex.toString();
+								optimized = true;
+							});
+							break;
+						}
+						case ValueType.pixelIndex: {
+							if (!isNaN(+v.value.x) && v.value.x === oldIndex) {
+								v.value.x = newIndex.toString();
+								optimized = true;
+							}
+							if (!isNaN(+v.value.y) && v.value.y === oldIndex) {
+								v.value.y = newIndex.toString();
+								optimized = true;
+							}
+							break;
+						}
+					}
+				})
+			});
+
+			const instrIndexChanges = {};
+			compressedInstructions = compressedInstructions.reduce((acc, curr, oldIndex) => {
+				const existingIndex = acc.findIndex(existing =>
+					existing.type === curr.type &&
+					JSON.stringify(existing.params) === JSON.stringify(curr.params)
+				);
+				if (existingIndex !== -1) {
+					instrIndexChanges[oldIndex] = existingIndex;
+					acc[existingIndex].linked.push(...curr.linked);
+				} else if (oldIndex !== acc.length) {
+					instrIndexChanges[oldIndex] = acc.length;
+				}
+
+				return existingIndex !== -1 ? acc : [...acc, curr];
+			}, [] as {
+				type: InstructionType;
+				params: string[];
+				linked: {
+					line: number;
+					pos: number;
+					file: string;
+				}[];
+			}[]);
+			Object.keys(instrIndexChanges).forEach(oldIndex => {
+				const newIndex = instrIndexChanges[oldIndex];
+				compressedInstructionSets.forEach(is => {
+					const instrIndexes = is.instructions.reduce((acc, curr, index) => (curr === +oldIndex) ? [...acc, index] : acc, []);
+					instrIndexes.forEach(p => {
+						is.instructions[p] = newIndex;
+						optimized = true;
+					});
+				});
+			});
+
+			const instrSetIndexChanges = {};
+			compressedInstructionSets = compressedInstructionSets.reduce((acc, curr, oldIndex) => {
+				const existingIndex = acc.findIndex(existing =>
+					JSON.stringify(existing.instructions) === JSON.stringify(curr.instructions)
+				);
+				if (existingIndex !== -1) {
+					instrSetIndexChanges[oldIndex] = existingIndex;
+					acc[existingIndex].linked.push(...curr.linked);
+				} else if (oldIndex !== acc.length) {
+					instrSetIndexChanges[oldIndex] = acc.length;
+				}
+
+				return existingIndex !== -1 ? acc : [...acc, curr];
+			}, [] as {
+				instructions: number[];
+				linked: {
+					name: string;
+				}[];
+			}[]);
+			Object.keys(instrSetIndexChanges).forEach(oldIndex => {
+				const newIndex = instrSetIndexChanges[oldIndex];
+				compressedInstructions.forEach(i => {
+					if (i.type === InstructionType.RunSet && !isNaN(+i.params[0]) && i.params[0] === oldIndex) {
+						i.params[0] = newIndex.toString();
+						optimized = true;
+					}
+					if (i.type === InstructionType.RunCondition) {
+						if (!isNaN(+i.params[1]) && i.params[1] === oldIndex) {
+							i.params[1] = newIndex.toString();
+							optimized = true;
+						}
+						if (!isNaN(+i.params[2]) && i.params[2] === oldIndex) {
+							i.params[2] = newIndex.toString();
+							optimized = true;
+						}
+					}
+				});
+			});
+		}
+		data.compressedValues = compressedValues;
+		data.compressedInstructions = compressedInstructions;
+		data.compressedInstructionSets = compressedInstructionSets;
+		return data;
+	}
+
 	checkForReferenceProblems(data: ParsedFile): ParsedFile {
+
 		data.values.forEach(v => {
 			let count = 0;
 			data.values.forEach(vv => {

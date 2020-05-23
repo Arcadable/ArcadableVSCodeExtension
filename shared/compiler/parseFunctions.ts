@@ -46,7 +46,7 @@ export function ParseValueNumber(section: string, otherMatchWithType: RegExpMatc
 		const value = numberMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
 		result.value = {
 			type: ValueType.number,
-			value,
+			value: value,
 			name
 		};
 	} else {
@@ -916,6 +916,8 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 				}
 			} else if (mutateMatch) {
 				const evalMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))END_OF_SECTION$/g) as RegExpMatchArray;
+				const numberMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))END_OF_SECTION$/g) as RegExpMatchArray;
+
 				if (evalMatch) {
 					const valueSplit = evalMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split(/=(.+)/g);
 					const value = valueSplit[1];
@@ -971,8 +973,28 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 						line: instructionSetStartLine + lineNumber + 2,
 						pos: position + totalPosition,
 					});
+				} else if (numberMatch) {
+					const valueSplit = numberMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split(/=(.+)/g);
+					const value = valueSplit[1];
+					const valueName = valueSplit[0];
+					const numberValueName = valueName + '-' + name + '-' + (instructionSetStartLine + lineNumber + 2) + '-' + (position + totalPosition + mutateMatch[0].length);
+
+					result.values.push({
+						type: ValueType.number,
+						value: value,
+						name: numberValueName,
+						line: instructionSetStartLine + lineNumber + 2,
+						pos: position + totalPosition
+					});
+
+					result.instructions.push({
+						type: InstructionType.MutateValue,
+						params: [valueName, numberValueName],
+						line: instructionSetStartLine + lineNumber + 2,
+						pos: position + totalPosition,
+					});
 				} else {
-					result.errors.push({ error: 'Incorrect evaluation format or missing ";"', pos: position + totalPosition + mutateMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+					result.errors.push({ error: 'Incorrect evaluation/number format or missing ";"', pos: position + totalPosition + mutateMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 				}
 			} else if (conditionMatch) {
 				const conditionValueMatch = section.substr(position).match(/^if( *)\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)\)( *){END_OF_SECTION$/g) as RegExpMatchArray;

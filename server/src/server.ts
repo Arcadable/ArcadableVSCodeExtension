@@ -87,7 +87,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 				start: {line: e.line-1, character: e.pos},
 				end: {line: e.line-1, character: e.pos}
 			},
-			message: e.error + 'test',
+			message: e.error,
 			source: 'arc'
 		};
 		diagnostics.push(diagnostic);

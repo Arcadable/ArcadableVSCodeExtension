@@ -324,27 +324,62 @@ export class ArcadableParser {
     
 }
 export class ParsedFile {
-    filePath: string = '';
+	filePath: string = '';
     imports: string[] = [];
     values: {
-        name: string,
-        type: ValueType,
-        value: any,
-        line: number,
-        pos: number,
-        file: string
+        name: string;
+        type: ValueType;
+        value: any;
+        line: number;
+        pos: number;
+		file: string;
+		compressedIndex?: number;
     }[] = [];
     instructionSets: {
-        name: string,
+        name: string;
         instructions: {
-            line: number,
-            pos: number,
-            file: string,
-            type: InstructionType,
-            params: string[]
+            line: number;
+            pos: number;
+            file: string;
+            type: InstructionType;
+			params: string[];
+			compressedIndex?: number;
+		}[];
+		compressedIndex?: number;
+    }[] = [];
+    compressedValues: {
+        type: ValueType,
+		value: any,
+		mutatable: boolean,
+        linked:{
+            name: string;
+            line: number;
+            pos: number;
+            file: string;
+		}[];
+		compressedIndex?: number;
+    }[] = [];
+    compressedInstructions: {
+        type: InstructionType,
+        params: string[],
+        linked:{
+            line: number;
+            pos: number;
+            file: string;
         }[]
     }[] = [];
-    errors: {file: string, line: number, pos: number, error: string}[] = [];
+    compressedInstructionSets: {
+		instructions: number[],
+		linked: {
+			name: string;
+		}[]
+    }[] = [];
+    errors: {
+        file: string;
+        line: number;
+        pos: number;
+        error: string;
+    }[] = [];
     constructor() {
     }
 }

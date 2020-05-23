@@ -31,7 +31,7 @@ export const instructionTypes = Object.keys(InstructionType)
 			case InstructionType.DrawLine:
 				return { viewValue: 'Draw line', codeValue: 'draw.drawLine(color, x1, y1, x2, y2);', value: Number(value) };
 			case InstructionType.DrawRect:
-				return { viewValue: 'Draw rect', codeValue: 'draw.drawRext(color, tlX, tlY, brX, brY);', value: Number(value) };
+				return { viewValue: 'Draw rect', codeValue: 'draw.drawRect(color, tlX, tlY, brX, brY);', value: Number(value) };
 			case InstructionType.FillRect:
 				return { viewValue: 'Fill rect', codeValue: 'draw.fillRect(color, tlX, tlY, brX, brY);', value: Number(value) };
 			case InstructionType.DrawCircle:
