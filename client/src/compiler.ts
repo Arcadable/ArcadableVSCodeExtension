@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value, InstructionType, AnalogInputValue, DigitalInputValue, EvaluationValue, ListValue, NumberValue, PixelValue, SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType, ValuePointer, NumberArrayValueTypePointer, ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction, DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction, MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, NumberArrayValueType, InstructionSetPointer, InstructionSet, InstructionPointer } from 'arcadable-shared';
+import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value, InstructionType, AnalogInputValue, DigitalInputValue, EvaluationValue, ListValue, NumberValue, PixelValue, SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType, ValuePointer, NumberArrayValueTypePointer, ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction, DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction, MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, NumberArrayValueType, InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, DebugLogInstruction } from 'arcadable-shared';
 import { SlowBuffer } from 'buffer';
+import { ValueArrayValueTypePointer } from 'arcadable-shared/out/model/values/valueArrayValueType';
 
 
 export class ArcadableCompiler {
@@ -78,9 +79,7 @@ export class ArcadableCompiler {
 				}
 			}
 		}
-		//add drawpixel and drawtext parsing
-		//add set list index and get list value instructions (mylist[9]) 
-		//if index is outside of list size, return 0
+
 		return this.compileResult;
 	}
 
@@ -255,12 +254,23 @@ export class ArcadableCompiler {
 								}
 								break;
 							}
-							case ValueType.list: {
+							case ValueType.listDeclaration: {
 								const listIndexes = v2.value.values.reduce((acc, curr, index) => (isNaN(+curr) && v.linked.findIndex(l => l.name === curr) !== -1) ? [...acc, index] : acc, []);
 								listIndexes.forEach(p => {
 									v2.value.values[p] = valueIndex.toString();
 									optimized = true;
 								});
+								break;
+							}
+							case ValueType.listValue: {
+								if (isNaN(+v2.value.list) && v.linked.findIndex(l => l.name === v2.value.list) !== -1) {
+									v2.value.list = valueIndex.toString();
+									optimized = true;
+								}
+								if (isNaN(+v2.value.index) && v.linked.findIndex(l => l.name === v2.value.index) !== -1) {
+									v2.value.index = valueIndex.toString();
+									optimized = true;
+								}
 								break;
 							}
 							case ValueType.pixelIndex: {
@@ -330,12 +340,23 @@ export class ArcadableCompiler {
 							}
 							break;
 						}
-						case ValueType.list: {
+						case ValueType.listDeclaration: {
 							const listIndexes = v.value.values.reduce((acc, curr, index) => (!isNaN(+curr) && curr === oldIndex) ? [...acc, index] : acc, []);
 							listIndexes.forEach(p => {
 								v.value.values[p] = newIndex.toString();
 								optimized = true;
 							});
+							break;
+						}
+						case ValueType.listValue: {
+							if (!isNaN(+v.value.list) && v.value.list === oldIndex) {
+								v.value.list = newIndex.toString();
+								optimized = true;
+							}
+							if (!isNaN(+v.value.index) && v.value.index === oldIndex) {
+								v.value.index = newIndex.toString();
+								optimized = true;
+							}
 							break;
 						}
 						case ValueType.pixelIndex: {
@@ -450,7 +471,7 @@ export class ArcadableCompiler {
 				})
 			}
 
-			if (v.type === ValueType.list) {
+			if (v.type === ValueType.listDeclaration) {
 				const value = (v.value as {type: ValueType, values: string[]});
 				value.values.forEach(v1 => {
 					const valueIndex = data.values.findIndex(v2 => v2.name === v1)
@@ -470,6 +491,9 @@ export class ArcadableCompiler {
 				data.errors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
 			} else if (v.type === ValueType.evaluation) {
 				const values = [v.value.left, v.value.right] as string[];
+				data.errors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
+			} else if (v.type === ValueType.listValue) {
+				const values = [v.value.list, v.value.index] as string[];
 				data.errors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
 			}
 		});
@@ -497,7 +521,6 @@ export class ArcadableCompiler {
 						case InstructionType.DrawLine: 
 						case InstructionType.DrawPixel: 
 						case InstructionType.DrawRect: 
-						case InstructionType.DrawText: 
 						case InstructionType.DrawTriangle: 
 						case InstructionType.FillCircle: 
 						case InstructionType.FillRect: 
@@ -513,6 +536,35 @@ export class ArcadableCompiler {
 						} 
 						case InstructionType.RunSet: {
 							data.errors.push(...this.checkInstructionSetReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
+							break;
+						}
+						case InstructionType.DrawText: {
+							data.errors.push(...this.checkNumbericalReferences(instruction.params.filter((p, i) => i !== 2), data, instruction.file, instruction.line, instruction.pos));
+							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[2]);
+							if (valueIndex === -1) {
+								data.errors.push(this.referenceNotFoundError(instruction.file, instruction.line, instruction.pos, instruction.params[0]));
+							} else if (data.values[valueIndex].type !== ValueType.text) {
+								data.errors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Value "' + instruction.params[0] + '" must be of type "String".'
+								});
+							}
+						}
+						case InstructionType.DebugLog: {
+							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[0]);
+							if (valueIndex === -1) {
+								data.errors.push(this.referenceNotFoundError(instruction.file, instruction.line, instruction.pos, instruction.params[0]));
+							} else if (data.values[valueIndex].type === ValueType.listDeclaration) {
+								data.errors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Value "' + instruction.params[0] + '" with type "List" cannot be used here.'
+								});
+							}
+
 							break;
 						}
 					}
@@ -537,7 +589,7 @@ export class ArcadableCompiler {
 			const valueIndex = data.values.findIndex(v2 => v2.name === v1)
 			if (valueIndex === -1) {
 				errors.push(this.referenceNotFoundError(file, line, pos, v1));
-			} else if (data.values[valueIndex].type === ValueType.list || data.values[valueIndex].type === ValueType.text) {
+			} else if (data.values[valueIndex].type === ValueType.listDeclaration || data.values[valueIndex].type === ValueType.text) {
 				errors.push({
 					file: file,
 					line: line,
@@ -608,7 +660,16 @@ export class CompileResult {
 						this.game
 					);
 				}
-				case ValueType.list: {
+				case ValueType.listValue: {
+					return new ListValue(
+						i,
+						new ValueArrayValueTypePointer<Value>(+v.value.list, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.index, this.game),
+						'',
+						this.game
+					);
+				}
+				case ValueType.listDeclaration: {
 					switch (v.value.type) {
 						case ValueType.analogInputPointer:
 						case ValueType.digitalInputPointer:
@@ -616,9 +677,8 @@ export class CompileResult {
 						case ValueType.number:
 						case ValueType.pixelIndex:
 						case ValueType.systemPointer: {
-							return new ListValue(
+							return new ListDeclaration(
 								i,
-								0,
 								v.value.values.length,
 								v.value.values.map(value => new NumberValueTypePointer<NumberValueType>(+value, this.game)),
 								'',
@@ -626,9 +686,8 @@ export class CompileResult {
 							);
 						}
 						case ValueType.text: {
-							return new ListValue(
+							return new ListDeclaration(
 								i,
-								0,
 								v.value.values.length,
 								v.value.values.map(value => new NumberArrayValueTypePointer<TextValue>(+value, this.game)),
 								'',
@@ -692,9 +751,16 @@ export class CompileResult {
 						this.game
 					);
 				}
-				/*case InstructionType.DrawPixel : {
-					return new DrawPixelInstruction();
-				}*/
+				case InstructionType.DrawPixel : {
+					return new DrawPixelInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						'',
+						this.game
+					);
+				}
 				case InstructionType.DrawRect : {
 					return new DrawRectInstruction(
 						i,
@@ -707,9 +773,18 @@ export class CompileResult {
 						this.game
 					);
 				}
-				/*case InstructionType.DrawText : {
-					return new DrawTextInstruction();
-				}*/
+				case InstructionType.DrawText : {
+					return new DrawTextInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberArrayValueTypePointer<TextValue>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						'',
+						this.game
+					);
+				}
 				case InstructionType.DrawTriangle : {
 					return new DrawTriangleInstruction(
 						i,
@@ -762,11 +837,19 @@ export class CompileResult {
 					);
 				}
 				case InstructionType.MutateValue : {
-					if (values[+inst.params[0]].type === ValueType.text || values[+inst.params[0]].type === ValueType.list) {
+					if (values[+inst.params[0]].type === ValueType.text) {
 						return new MutateValueInstruction(
 							i,
 							new NumberArrayValueTypePointer<NumberArrayValueType>(+inst.params[0], this.game),
 							new NumberArrayValueTypePointer<NumberArrayValueType>(+inst.params[1], this.game),
+							'',
+							this.game
+						);
+					} else if (values[+inst.params[0]].type === ValueType.listDeclaration) {
+						return new MutateValueInstruction(
+							i,
+							new ValueArrayValueTypePointer<Value>(+inst.params[0], this.game),
+							new ValueArrayValueTypePointer<Value>(+inst.params[1], this.game),
 							'',
 							this.game
 						);
@@ -803,6 +886,14 @@ export class CompileResult {
 					return new SetRotationInstruction(
 						i,
 						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						'',
+						this.game
+					);
+				}
+				case InstructionType.DebugLog : {
+					return new DebugLogInstruction(
+						i,
+						new NumberValueTypePointer<Value>(+inst.params[0], this.game),
 						'',
 						this.game
 					);

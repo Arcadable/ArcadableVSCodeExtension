@@ -21,7 +21,7 @@ export class ClearInstruction extends Instruction {
         }
 
         return [ (e: number[]) => {
-            this.game.drawInstruction.next({
+            this.game.instructionEmitter.next({
                 command: 'clear'
             });
         }];

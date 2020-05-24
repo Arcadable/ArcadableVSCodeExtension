@@ -108,7 +108,7 @@ export class DrawTriangleInstruction extends Instruction {
         const pixel3Y = this.y3Value.getValue(executionOrder);
 
         return [ (e: number[]) => {
-            this.game.drawInstruction.next({
+            this.game.instructionEmitter.next({
                 command: 'drawTriangle',
                 triangleColor,
                 pixel1X,

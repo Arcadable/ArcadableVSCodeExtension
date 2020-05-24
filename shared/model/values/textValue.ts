@@ -1,5 +1,5 @@
 import { ValueType } from './value';
-import { NumberArrayValueType } from './NumberArrayValueType';
+import { NumberArrayValueType } from './numberArrayValueType';
 import { Arcadable } from '../arcadable';
 
 export class TextValue extends NumberArrayValueType {

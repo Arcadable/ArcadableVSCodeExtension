@@ -7,7 +7,8 @@ export enum ValueType {
     digitalInputPointer,
     analogInputPointer,
     systemPointer,
-    list,
+	listDeclaration,
+	listValue,
     text,
     evaluation,
 }
@@ -23,8 +24,10 @@ export const valueTypes = Object.keys(ValueType).filter(key => isNaN(Number(Valu
 			return { viewValue: 'Analog input pointer', codeValue: 'Analog', value: Number(value) };
 		case ValueType.systemPointer:
 			return { viewValue: 'System value pointer', codeValue: 'Config', value: Number(value) };
-		case ValueType.list:
-			return { viewValue: 'List value pointer', codeValue: 'List<>', value: Number(value) };
+		case ValueType.listValue:
+			return { viewValue: 'List value pointer', codeValue: 'ListValue', value: Number(value) };
+		case ValueType.listDeclaration:
+			return { viewValue: 'List declaration', codeValue: 'List<>', value: Number(value) };
 		case ValueType.text:
 			return { viewValue: 'Text', codeValue: 'String', value: Number(value) };
 		case ValueType.evaluation:

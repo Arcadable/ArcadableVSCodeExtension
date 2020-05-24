@@ -18,6 +18,7 @@ import { EvaluationValue } from './values/evaluationValue';
 import { Value, ValueType } from './values/value';
 import { AnalogInputValue } from './values/analogInputValue';
 import { DigitalInputValue } from './values/digitalInputValue';
+import { ListDeclaration } from './values/listDeclaration';
 import { ListValue } from './values/listValue';
 import { NumberValue } from './values/numberValue';
 import { PixelValue } from './values/pixelValue';
@@ -33,7 +34,7 @@ export class Arcadable {
 
     resetCalled = new Subject<boolean>();
     breakEncountered = new Subject<boolean>();
-    drawInstruction = new Subject<any>();
+    instructionEmitter = new Subject<any>();
     values: {[key: number]: Value} = {};
     instructions: {[key: number]: Instruction} = {};
     instructionSets: {[key: number]: InstructionSet} = {};
@@ -176,7 +177,7 @@ export class Arcadable {
     	return returnValue;
     }
 
-    export(): string {
+    export(): Uint8Array {
     	let binaryString = '';
 
     	let tempBinaryString = '';
@@ -200,12 +201,16 @@ export class Arcadable {
     				tempBinaryString += this.makeLength((this.values[Number(k)] as EvaluationValue).right.ID.toString(2), 16);
     				break;
     			}
-    			case ValueType.list: {
-    				tempBinaryString += this.makeLength((this.values[Number(k)] as ListValue<any>).currentIndex.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.values[Number(k)] as ListValue<any>).size.toString(2), 16);
-    				(this.values[Number(k)] as ListValue<any>).values.forEach(v => {
+    			case ValueType.listDeclaration: {
+    				tempBinaryString += this.makeLength((this.values[Number(k)] as ListDeclaration<Value>).size.toString(2), 16);
+    				(this.values[Number(k)] as ListDeclaration<Value>).values.forEach(v => {
     					tempBinaryString += this.makeLength(v.ID.toString(2), 16);
     				});
+    				break;
+				}
+				case ValueType.listValue: {
+					tempBinaryString += this.makeLength((this.values[Number(k)] as ListValue<Value, number | number[]>).listValue.ID.toString(2), 16);
+					tempBinaryString += this.makeLength((this.values[Number(k)] as ListValue<Value, number | number[]>).listIndex.ID.toString(2), 16);
     				break;
     			}
     			case ValueType.number: {
@@ -239,106 +244,107 @@ export class Arcadable {
     	binaryString += tempBinaryString;
     	tempBinaryString = '';
     	Object.keys(this.instructions).forEach(k => {
+			if(this.instructions[Number(k)].instructionType !== InstructionType.DebugLog) {
+				tempBinaryString += this.makeLength(this.instructions[Number(k)].ID.toString(2), 16);
+				tempBinaryString += this.makeLength(this.instructions[Number(k)].instructionType.toString(2), 8);
 
-    		tempBinaryString += this.makeLength(this.instructions[Number(k)].ID.toString(2), 16);
-    		tempBinaryString += this.makeLength(this.instructions[Number(k)].instructionType.toString(2), 8);
-
-    		switch (this.instructions[Number(k)].instructionType) {
-    			case InstructionType.Clear: {
-    				break;
-    			}
-    			case InstructionType.DrawCircle: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawCircleInstruction).colorValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawCircleInstruction).radiusValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawCircleInstruction).xValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawCircleInstruction).yValue.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.FillCircle: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillCircleInstruction).colorValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillCircleInstruction).radiusValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillCircleInstruction).xValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillCircleInstruction).yValue.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.DrawLine: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).colorValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).x1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).y1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).x2Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).y2Value.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.DrawPixel: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawPixelInstruction).colorValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawPixelInstruction).xValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawPixelInstruction).yValue.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.DrawRect: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).colorValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).x1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).y1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).x2Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).y2Value.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.FillRect: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).colorValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).x1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).y1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).x2Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).y2Value.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.DrawText: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).colorValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).xValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).yValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).scaleValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).textValue.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.DrawTriangle: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).colorValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).x1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).y1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).x2Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).y2Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).x3Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).y3Value.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.FillTriangle: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).colorValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).x1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).y1Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).x2Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).y2Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).x3Value.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).y3Value.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.MutateValue: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as MutateValueInstruction).leftValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as MutateValueInstruction).rightValue.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.RunCondition: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).evaluationValue.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).failSet.ID.toString(2), 16);
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).successSet.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.SetRotation: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as SetRotationInstruction).rotationValue.ID.toString(2), 16);
-    				break;
-    			}
-    			case InstructionType.RunSet: {
-    				tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunSetInstruction).set.ID.toString(2), 16);
-    				break;
-    			}
-    		}
+				switch (this.instructions[Number(k)].instructionType) {
+					case InstructionType.Clear: {
+						break;
+					}
+					case InstructionType.DrawCircle: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawCircleInstruction).colorValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawCircleInstruction).radiusValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawCircleInstruction).xValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawCircleInstruction).yValue.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.FillCircle: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillCircleInstruction).colorValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillCircleInstruction).radiusValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillCircleInstruction).xValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillCircleInstruction).yValue.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.DrawLine: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).colorValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).x1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).y1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).x2Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawLineInstruction).y2Value.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.DrawPixel: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawPixelInstruction).colorValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawPixelInstruction).xValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawPixelInstruction).yValue.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.DrawRect: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).colorValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).x1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).y1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).x2Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawRectInstruction).y2Value.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.FillRect: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).colorValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).x1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).y1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).x2Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillRectInstruction).y2Value.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.DrawText: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).colorValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).xValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).yValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).scaleValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTextInstruction).textValue.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.DrawTriangle: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).colorValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).x1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).y1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).x2Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).y2Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).x3Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as DrawTriangleInstruction).y3Value.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.FillTriangle: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).colorValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).x1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).y1Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).x2Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).y2Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).x3Value.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as FillTriangleInstruction).y3Value.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.MutateValue: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as MutateValueInstruction).leftValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as MutateValueInstruction).rightValue.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.RunCondition: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).evaluationValue.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).failSet.ID.toString(2), 16);
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).successSet.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.SetRotation: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as SetRotationInstruction).rotationValue.ID.toString(2), 16);
+						break;
+					}
+					case InstructionType.RunSet: {
+						tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunSetInstruction).set.ID.toString(2), 16);
+						break;
+					}
+				}
+			}
     	});
     	binaryString += this.makeLength((tempBinaryString.length / 8).toString(2), 16);
     	binaryString += tempBinaryString;
@@ -359,20 +365,15 @@ export class Arcadable {
     	});
     	binaryString += this.makeLength((tempBinaryString.length / 8).toString(2), 16);
     	binaryString += tempBinaryString;
-
-    	const bytes = [];
+		const numbers = [];
     	let index = 0;
     	while (binaryString.length > 0) {
-    		bytes[index] = parseInt(binaryString.substring(0, 8), 2);
+    		numbers[index] = parseInt(binaryString.substring(0, 8), 2);
     		binaryString = binaryString.substring(8);
     		index++;
     	}
+		const bytes = Uint8Array.from(numbers);
 
-    	let returnString = '';
-    	bytes.forEach((byte, i) => {
-    		returnString += (i !== 0 ? ', ' : '') + byte;
-    	});
-
-    	return returnString;
+    	return bytes;
     }
 }

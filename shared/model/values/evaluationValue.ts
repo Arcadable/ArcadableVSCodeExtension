@@ -166,10 +166,6 @@ export class EvaluationValue extends NumberValueType {
                 result =  -1;
                 break;
         }
-        console.log('a ' + this.evaluationOperator);
-        console.log('b ' + result);
-        console.log('c ' + left);
-        console.log('d ' + right);
 
         if (this.isStatic) {
             this._STATIC_RESULT = result;

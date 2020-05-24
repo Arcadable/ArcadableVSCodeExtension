@@ -43,7 +43,7 @@ export class PixelValue extends NumberValueType {
             this.game.breakEncountered.next();
         }
         /*new Promise((res, rej) => {
-            this.game.drawInstruction.next({
+            this.game.instructionEmitter.next({
                 command: 'getPixel',
                 callback: (color: number) => {
                     res(color);
@@ -63,7 +63,7 @@ export class PixelValue extends NumberValueType {
             this.game.breakEncountered.next();
         }
 
-        this.game.drawInstruction.next({
+        this.game.instructionEmitter.next({
             command: 'drawPixel',
             x: this.XCalc.getValue(executionOrder),
             y: this.YCalc.getValue(executionOrder),

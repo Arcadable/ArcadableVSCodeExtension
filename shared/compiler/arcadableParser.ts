@@ -1,6 +1,6 @@
 import { InstructionType } from '../model/instructions/instruction';
 import { ValueType } from '../model/values/value';
-import { FunctionParseResult, ParseFunction, ParseImport, ParseValueAnalog, ParseValueConfig, ParseValueDigital, ParseValueEval, ParseValueListAnalog, ParseValueListConfig, ParseValueListDigital, ParseValueListEval, ParseValueListNumber, ParseValueListPixel, ParseValueListString, ParseValueNumber, ParseValuePixel, ParseValueString, ValueParseResult } from './parseFunctions';
+import { FunctionParseResult, ParseFunction, ParseImport, ParseValueAnalog, ParseValueConfig, ParseValueDigital, ParseValueEval, ParseValueListAnalog, ParseValueListConfig, ParseValueListDigital, ParseValueListEval, ParseValueListNumber, ParseValueListPixel, ParseValueListString, ParseValueNumber, ParseValuePixel, ParseValueString, ValueParseResult, ParseValueListValue } from './parseFunctions';
 
 export class ArcadableParser {
     tempContent = '';
@@ -47,7 +47,7 @@ export class ArcadableParser {
     					})));
     				}
     			} else if (otherMatch) {
-    				const otherMatchWithType = section.substr(position).match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)(Number|Analog|Digital|Pixel|Config|String|Eval|StaticEval|Function|List<( *)(Number|Analog|Digital|Pixel|Config|String|Eval|StaticEval)( *)>)/g) as RegExpMatchArray;
+    				const otherMatchWithType = section.substr(position).match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)(Number|Analog|Digital|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List<( *)(Number|Analog|Digital|Pixel|Config|String|Eval|StaticEval)( *)>)/g) as RegExpMatchArray;
     				if (otherMatchWithType) {
     					const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
     					const type = values[1];
@@ -112,7 +112,19 @@ export class ArcadableParser {
     							functionParseResult = res;
     							parsedLinesCount = res.parsedCount;
     							break;
-    						}
+							}
+							case 'ListValue': {
+								valueParseResult = ParseValueListValue(section.substr(position), otherMatchWithType).map(r => ({
+    								parseResult: {
+    									value: r.value,
+    									errors: r.errors
+    								},
+    								line: lineNumber + 1,
+    								pos: position + totalPosition,
+    								file: fileName
+    							}));
+    							break;
+							}
     						case 'List<Number>': {
     							valueParseResult = ParseValueListNumber(section.substr(position), otherMatchWithType).map(r => ({
     								parseResult: {

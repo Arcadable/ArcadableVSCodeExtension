@@ -34,7 +34,7 @@ export class SetRotationInstruction extends Instruction {
         const rotation = this.rotationValue.getValue(executionOrder);
 
         return [ (e: number[]) => {
-            this.game.drawInstruction.next({
+            this.game.instructionEmitter.next({
                 command: 'drawCircle',
                 rotation,
             });

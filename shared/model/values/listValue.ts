@@ -1,85 +1,67 @@
 import { Value, ValuePointer, ValueType } from './value';
 import { Arcadable } from '../arcadable';
+import { ValueArrayValueType, ValueArrayValueTypePointer } from './valueArrayValueType';
+import { NumberValueTypePointer, NumberValueType } from './NumberValueType';
 
-export class ListValue<T extends Value> extends Value {
+export class ListValue<T1 extends Value, T2 = number | number[]> extends Value {
 
-    private _CURRENT_INDEX!: number;
-    set currentIndex(value: number) {
-        this._CURRENT_INDEX = value;
+    private _LIST_VALUE!: ValueArrayValueTypePointer<T1>;
+    set listValue(value: ValueArrayValueTypePointer<T1>) {
+        this._LIST_VALUE = value;
         this.called = true;
     }
-    get currentIndex(): number {
-        return this._CURRENT_INDEX;
+    get listValue(): ValueArrayValueTypePointer<T1> {
+        return this._LIST_VALUE;
     }
 
-    private _SIZE!: number;
-    set size(value: number) {
-        this._SIZE = value;
+    private _LIST_INDEX!: NumberValueTypePointer<NumberValueType>;
+    set listIndex(values: NumberValueTypePointer<NumberValueType>) {
+        this._LIST_INDEX = values;
         this.called = true;
     }
-    get size(): number {
-        return this._SIZE;
-    }
-
-    private _VALUES!: ValuePointer<T>[];
-    set values(values: ValuePointer<T>[]) {
-        this._VALUES = values;
-        this.called = true;
-    }
-    get values(): ValuePointer<T>[] {
-        return this._VALUES;
+    get listIndex(): NumberValueTypePointer<NumberValueType> {
+        return this._LIST_INDEX;
     }
 
     constructor(
         ID: number,
-        currentIndex: number,
-        size: number,
-        values: ValuePointer<T>[],
+        listValue: ValueArrayValueTypePointer<T1>,
+        listIndex: NumberValueTypePointer<NumberValueType>,
         name: string,
         game: Arcadable
     ) {
-        super(ID, ValueType.list, name, game);
-        this.values = values;
-        this.size = size;
-        this.currentIndex = currentIndex;
+        super(ID, ValueType.listDeclaration, name, game);
+        this.listValue = listValue;
+        this.listIndex = listIndex;
     }
 
-
-
-    get(executionOrder: number[]): any {
+    get(executionOrder: number[]): T2 {
         this.called = true;
         this.executionOrder = executionOrder;
 
         if (this.breakSet) {
             this.game.breakEncountered.next();
         }
-
-        return this.values[this.currentIndex].getValue(executionOrder);
+        const index = this.listIndex.getValue(executionOrder);
+        const listValue = this.listValue.getValue(executionOrder)[index];
+        return listValue.getValue(executionOrder);
     }
 
-    set(newValue: any, executionOrder: number[]) {
+    set(newValue: T2, executionOrder: number[]) {
         this.called = true;
         this.executionOrder = executionOrder;
 
         if (this.breakSet) {
             this.game.breakEncountered.next();
         }
-
-        this.values[this.currentIndex].getObject(executionOrder).set(newValue, executionOrder);
+        const index = this.listIndex.getValue(executionOrder);
+        const listValue = this.listValue.getValue(executionOrder)[index];
+        return listValue.getObject(executionOrder).set(newValue, executionOrder);
     }
     isTruthy(executionOrder: number[]) {
-        return this.values[this.currentIndex].getObject(executionOrder).isTruthy(executionOrder);
-    }
-
-    setIndex(newIndex: number, executionOrder: number[]) {
-        this.called = true;
-        this.executionOrder = executionOrder;
-
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
-
-        this.currentIndex = newIndex;
+        const index = this.listIndex.getValue(executionOrder);
+        const listValue = this.listValue.getValue(executionOrder)[index];
+        return listValue.getObject(executionOrder).isTruthy(executionOrder);
     }
 
     stringify() {
@@ -87,9 +69,8 @@ export class ListValue<T extends Value> extends Value {
             ID: this.ID,
             name: this.name,
             type: this.type,
-            values: this.values,
-            size: this.size,
-            currentIndex: this.currentIndex
+            listValue: this.listValue,
+            listIndex: this.listIndex,
         });
     }
 }

@@ -9,6 +9,7 @@ export class Emulator {
 	getPixelCallback: (color: number) => {};
 	instructionSubscription: Subscription;
 	compileResult: CompileResult;
+	exportPath: string;
 	constructor(public log: vscode.OutputChannel) {
 		
 	}
@@ -23,6 +24,38 @@ export class Emulator {
 						const color = message.color;
 						this.getPixelCallback(color);
 						return;
+					case 'export': {
+						if (this.compileResult.game) {
+							(async () => {
+								this.log.append('Exported Arcadable script');
+								const startTime = process.hrtime();
+								const bytes = this.compileResult.game.export();
+								let path = this.exportPath;
+								if (path.charAt(path.length - 1) === '/') {
+									path = path.substr(0, path.length - 2);
+								}
+								fs.writeFile(vscode.workspace.rootPath + path + '/export.bin' , bytes, (e) => {
+									this.log.appendLine('Write error: ' + e.message);
+								});
+								fs.writeFile(vscode.workspace.rootPath + path + '/export.json' , `{
+	"size": ${bytes.length},
+	"data": "${bytes.reduce((acc, curr, i) => i === 0 ? curr : acc + ',' + curr, '')}"
+}`, (e) => {
+									this.log.appendLine('Write error: ' + e.message);
+								});
+								const diff = process.hrtime(startTime);
+								const duration =  Math.floor((diff[0] * 1000 + diff[1] / 1000000)*1000)/1000;
+								this.log.appendLine(' in ' + duration + 'ms.');
+								this.log.appendLine('Export size: ' + bytes.length + ' bytes.');
+								this.log.appendLine('Export path: ' + vscode.workspace.rootPath + path + '/export.json');
+								this.log.appendLine('Export path: ' + vscode.workspace.rootPath + path + '/export.bin');
+
+							})();
+						} else {
+							this.log.appendLine('Cannot export, code probably has errors.');
+						}
+						return;
+					}
 				}
 			},
 			undefined,
@@ -46,6 +79,12 @@ export class Emulator {
 		);
 		vscode.workspace.onDidSaveTextDocument((document: vscode.TextDocument) => {
 			if ((document.fileName.endsWith('.arc') || document.fileName.endsWith('arcadable.config.json')) && document.uri.scheme === 'file') {
+				if(this.compileResult) {
+					if(this.instructionSubscription) {
+						this.instructionSubscription.unsubscribe();
+					}
+					this.compileResult.game.stop();
+				}
 				this.loadGame(currentPanel);
 			}
 		});
@@ -95,21 +134,25 @@ export class Emulator {
 			this.log.appendLine('Arcadable compilation completed successfully in ' + duration + 'ms.')
 
 		}
-
 		this.log.show();
-		this.compileResult = compileResult;
-		const game = this.compileResult.game;
-		console.log(game);
-		if (game) {
-			if(this.instructionSubscription) {
-				this.instructionSubscription.unsubscribe();
-			}
-			this.instructionSubscription = game.drawInstruction.subscribe((instruction: any) => {
+		if(compileResult.game && compileResult.parseErrors.length === 0 && compileResult.compileErrors.length === 0) {
+			this.compileResult = compileResult;
+			const game = this.compileResult.game;
+
+			this.instructionSubscription = game.instructionEmitter.subscribe((instruction: any) => {
 				if (instruction.command === 'getPixel') {
 					this.getPixelCallback = instruction.callback;
 				}
-				console.log(instruction);
-				(currentPanel as vscode.WebviewPanel).webview.postMessage(instruction);
+				if (instruction.command === 'log') {
+					if(!isNaN(+instruction.value)) {
+						this.log.appendLine(instruction.value + '');
+					} else if (instruction.value.length !== undefined && instruction.value.length > 0) {
+						const message = String.fromCharCode(...(instruction.value as number[]));
+						this.log.appendLine(message);
+					}
+				} else {
+					(currentPanel as vscode.WebviewPanel).webview.postMessage(instruction);
+				}
 			});
 	
 			(currentPanel as vscode.WebviewPanel).webview.postMessage({
@@ -117,7 +160,6 @@ export class Emulator {
 				width: game.systemConfig.screenWidth,
 				height: game.systemConfig.screenHeight
 			});
-			console.log('start');
 			game.start();
 		}
 	}
@@ -151,6 +193,8 @@ export class Emulator {
 			this.log.appendLine(`No config file found at path: "${vscode.workspace.rootPath}/arcadable.config.json"`);
 			return undefined;
 		}
+		this.exportPath = (config as any).project.export;
+		console.log(config);
 		const mainUri = (await vscode.workspace.findFiles((config as any).project.main))[0];
 		const mainDoc = await vscode.workspace.openTextDocument(mainUri);
 	
@@ -192,36 +236,39 @@ export class Emulator {
 	checkConfig(config: any): string {
 		let result = 'Config missing property: ';
 		if (!config.project) {
-			result = '"project", ';
+			result += '"project", ';
 		} else {
 			if (!config.project.name) {
-				result = '"project.name", ';
+				result += '"project.name", ';
 			}
 			if (!config.project.version) {
-				result = '"project.version", ';
+				result += '"project.version", ';
 			}
 			if (!config.project.main) {
-				result = '"project.main", ';
+				result += '"project.main", ';
+			}
+			if (!config.project.export) {
+				result += '"project.export", ';
 			}
 		}
 	
 		if (!config.system) {
-			result = '"system", ';
+			result += '"system", ';
 		} else {
 			if (!config.system.screenWidth) {
-				result = '"system.screenWidth", ';
+				result += '"system.screenWidth", ';
 			}
 			if (!config.system.screenHeight) {
-				result = '"system.screenHeight", ';
+				result += '"system.screenHeight", ';
 			}
 			if (!config.system.targetFramerate) {
-				result = '"system.targetFramerate", ';
+				result += '"system.targetFramerate", ';
 			}
 			if (!config.system.digitalInputAmount) {
-				result = '"system.digitalInputAmount", ';
+				result += '"system.digitalInputAmount", ';
 			}
 			if (!config.system.analogInputAmount) {
-				result = '"system.analogInputAmount", ';
+				result += '"system.analogInputAmount", ';
 			}
 		}
 		if (result === 'Config missing property: ') {
@@ -241,13 +288,6 @@ export class Emulator {
 				enableScripts: true
 			}
 		);
-	
-		currentPanel.onDidDispose(() => {
-			if(this.compileResult) {
-				console.log('stop');
-				this.compileResult.game.stop();
-			}
-		})
 
 		const templateFilePath: vscode.Uri = vscode.Uri.file(path.join(context.extensionPath, 'client', 'src', 'html', 'index.html'));
 		const styleSrcUrl = currentPanel.webview.asWebviewUri(

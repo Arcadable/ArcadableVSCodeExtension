@@ -71,7 +71,7 @@ export class FillCircleInstruction extends Instruction {
         const centerY = this.yValue.getValue(executionOrder);
 
         return [ (e: number[]) => {
-            this.game.drawInstruction.next({
+            this.game.instructionEmitter.next({
                 command: 'fillCircle',
                 color,
                 radius,

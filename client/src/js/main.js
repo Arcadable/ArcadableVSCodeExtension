@@ -282,7 +282,7 @@ function aliasedLine(x0, y0, x1, y1, color, data) {
     }
 }
 function setPixel(x, y, color, data) {
-    const n = (y * game.canvasContext.canvas.width + x) * 4;
+    const n = (y * canvasContext.canvas.width + x) * 4;
     data[n] = color >> 16;
     data[n + 1] = (color & 0x00FF00) >> 8;
     data[n + 2] = color & 0x0000FF;
@@ -293,17 +293,17 @@ function aliasedFilledCircle(xc, yc, r) {
     let y = 0;
     let cd = 0;
 
-    game.canvasContext.fillRect(xc - x, yc, r << 1, 1);
+    canvasContext.fillRect(xc - x, yc, r << 1, 1);
 
     while (x > y) {
         cd -= (--x) - (++y);
         if (cd < 0) {
             cd += x++;
         }
-        game.canvasContext.fillRect(xc - y, yc - x, y << 1, 1);
-        game.canvasContext.fillRect(xc - x, yc - y, x << 1, 1);
-        game.canvasContext.fillRect(xc - x, yc + y, x << 1, 1);
-        game.canvasContext.fillRect(xc - y, yc + x, y << 1, 1);
+        canvasContext.fillRect(xc - y, yc - x, y << 1, 1);
+        canvasContext.fillRect(xc - x, yc - y, x << 1, 1);
+        canvasContext.fillRect(xc - x, yc + y, x << 1, 1);
+        canvasContext.fillRect(xc - y, yc + x, y << 1, 1);
     }
 }
 function aliasedStrokeCircle(xc, yc, r) {
@@ -311,24 +311,30 @@ function aliasedStrokeCircle(xc, yc, r) {
     let y = 0;
     let cd = 0;
 
-    game.canvasContext.fillRect(xc - x, yc, 1, 1);
-    game.canvasContext.fillRect(xc + x - 1, yc, 1, 1);
+    canvasContext.fillRect(xc - x, yc, 1, 1);
+    canvasContext.fillRect(xc + x - 1, yc, 1, 1);
 
     while (x > y) {
         cd -= (--x) - (++y);
         if (cd < 0) {
             cd += x++;
         }
-        game.canvasContext.fillRect(xc - y, yc - x, 1, 1);
-        game.canvasContext.fillRect(xc - x, yc - y, 1, 1);
-        game.canvasContext.fillRect(xc - x, yc + y, 1, 1);
-        game.canvasContext.fillRect(xc - y, yc + x, 1, 1);
+        canvasContext.fillRect(xc - y, yc - x, 1, 1);
+        canvasContext.fillRect(xc - x, yc - y, 1, 1);
+        canvasContext.fillRect(xc - x, yc + y, 1, 1);
+        canvasContext.fillRect(xc - y, yc + x, 1, 1);
 
-        game.canvasContext.fillRect(xc + y - 1, yc - x, 1, 1);
-        game.canvasContext.fillRect(xc + x - 1, yc - y, 1, 1);
-        game.canvasContext.fillRect(xc + x - 1, yc + y, 1, 1);
-        game.canvasContext.fillRect(xc + y - 1, yc + x, 1, 1);
+        canvasContext.fillRect(xc + y - 1, yc - x, 1, 1);
+        canvasContext.fillRect(xc + x - 1, yc - y, 1, 1);
+        canvasContext.fillRect(xc + x - 1, yc + y, 1, 1);
+        canvasContext.fillRect(xc + y - 1, yc + x, 1, 1);
     }
+}
+
+function exportByteCode() {
+    vscode.postMessage({
+        command: 'export'
+    })
 }
 
 

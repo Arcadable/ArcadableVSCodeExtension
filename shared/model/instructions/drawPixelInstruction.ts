@@ -61,7 +61,7 @@ export class DrawPixelInstruction extends Instruction {
         const pixelColor = this.colorValue.getValue(executionOrder);
 
         return [ (e: number[]) => {
-            this.game.drawInstruction.next({
+            this.game.instructionEmitter.next({
                 command: 'drawPixel',
                 x,
                 y,

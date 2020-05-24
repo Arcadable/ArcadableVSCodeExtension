@@ -84,7 +84,7 @@ export class DrawLineInstruction extends Instruction {
 
         const lineColor = this.colorValue.getValue(executionOrder);
         return [ (e: number[]) => {
-            this.game.drawInstruction.next({
+            this.game.instructionEmitter.next({
                 command: 'drawLine',
                 lineColor,
                 pos1X,

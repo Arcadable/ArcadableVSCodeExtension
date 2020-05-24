@@ -268,6 +268,49 @@ export function ParseValueEval(section: string, otherMatchWithType: RegExpMatchA
 	return result;
 }
 
+export function ParseValueListValue(section: string, otherMatchWithType: RegExpMatchArray) {
+	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
+	const name = values[0];
+	const result: ValueParseResult[] = [];
+	const main: ValueParseResult = {
+		value: null,
+		errors: []
+	};
+	const listValueMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)ListValue( *)=( *)([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*\[((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+)))\]END_OF_SECTION$/g) as RegExpMatchArray;
+	if (listValueMatch) {
+		const valueRaw = listValueMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
+		const list = valueRaw.split(/\[/g)[0];
+		let index = valueRaw.split(/\[/g)[1].replace(/\]/g, '');
+		const parsedIndex = Number.parseInt(index);
+		if(!Number.isNaN(parsedIndex)) {
+			const subIndexName = name + '-y';
+			const subIndexValue: ValueParseResult = {
+				value: {
+					type: ValueType.number,
+					value: parsedIndex,
+					name: subIndexName
+				},
+				errors: []
+			};
+			index = subIndexName;
+			result.push(subIndexValue);
+		}
+
+		main.value = {
+			type: ValueType.listValue,
+			value: {
+				list,
+				index,
+			},
+			name
+		};
+	} else {
+		main.errors.push({ error: 'Incorrect string format or missing ";"', pos: otherMatchWithType[0].length });
+	}
+	result.push(main);
+	return result;
+}
+
 export function ParseValueListNumber(section: string, otherMatchWithType: RegExpMatchArray) {
 	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
 	const name = values[0];
@@ -300,7 +343,7 @@ export function ParseValueListNumber(section: string, otherMatchWithType: RegExp
 			}
 		});
 		main.value = {
-			type: ValueType.list,
+			type: ValueType.listDeclaration,
 			value: {
 				values: actualValues,
 				type: ValueType.number
@@ -347,7 +390,7 @@ export function ParseValueListAnalog(section: string, otherMatchWithType: RegExp
 			}
 		});
 		main.value = {
-			type: ValueType.list,
+			type: ValueType.listDeclaration,
 			value: {
 				values: actualValues,
 				type: ValueType.analogInputPointer,
@@ -393,7 +436,7 @@ export function ParseValueListDigital(section: string, otherMatchWithType: RegEx
 			}
 		});
 		main.value = {
-			type: ValueType.list,
+			type: ValueType.listDeclaration,
 			value: {
 				values: actualValues,
 				type: ValueType.digitalInputPointer
@@ -472,7 +515,7 @@ export function ParseValueListPixel(section: string, otherMatchWithType: RegExpM
 			}
 		});
 		main.value = {
-			type: ValueType.list,
+			type: ValueType.listDeclaration,
 			value: {
 				values: actualValues,
 				type: ValueType.pixelIndex
@@ -519,7 +562,7 @@ export function ParseValueListConfig(section: string, otherMatchWithType: RegExp
 			}
 		});
 		main.value = {
-			type: ValueType.list,
+			type: ValueType.listDeclaration,
 			value: {
 				values: actualValues,
 				type: ValueType.systemPointer
@@ -566,7 +609,7 @@ export function ParseValueListString(section: string, otherMatchWithType: RegExp
 			}
 		});
 		main.value = {
-			type: ValueType.list,
+			type: ValueType.listDeclaration,
 			value: {
 				values: actualValues,
 				type: ValueType.text
@@ -656,7 +699,7 @@ export function ParseValueListEval(section: string, otherMatchWithType: RegExpMa
 		});
 
 		main.value = {
-			type: ValueType.list,
+			type: ValueType.listDeclaration,
 			value: {
 				values: actualValues,
 				type: ValueType.evaluation
@@ -764,9 +807,10 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 			const executeMatch = section.substr(position).match(/^execute/g) as RegExpMatchArray;
 			const mutateMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=/g) as RegExpMatchArray;
 			const conditionMatch = section.substr(position).match(/^if/g) as RegExpMatchArray;
+			const debugMatch = section.substr(position).match(/^debug\.log/g) as RegExpMatchArray;
 
 			if (drawMatch) {
-				const drawMatchType = section.substr(position).match(/^draw\.(clear|(drawCircle|fillCircle|drawRect|fillRect|drawTriangle|fillTriangle|drawLine|setRotation))/g) as RegExpMatchArray;
+				const drawMatchType = section.substr(position).match(/^draw\.(clear|(drawPixel|drawText|drawCircle|fillCircle|drawRect|fillRect|drawTriangle|fillTriangle|drawLine|setRotation))/g) as RegExpMatchArray;
 				if (drawMatchType) {
 					let drawInstruction: {
                         line: number;
@@ -786,6 +830,28 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 								drawInstruction.type = InstructionType.Clear;
 							} else {
 								result.errors.push({ error: 'Unexpected draw.clear format, or missing ";"', pos: position + totalPosition + drawMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+							}
+							break;
+						}
+						case 'draw.drawPixel': {
+							const drawPixelMatch = section.substr(position).match(/^draw\.drawPixel\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							if (drawPixelMatch) {
+								const params = drawPixelMatch[0].replace(/\s/g, '').replace('draw.drawPixel(', '').replace(')END_OF_SECTION', '').split(',');
+								drawInstruction.type = InstructionType.DrawPixel;
+								drawInstruction.params = params;
+							} else {
+								result.errors.push({ error: 'Unexpected draw.drawPixel format ("draw.drawPixel(color, x, y)"), or missing ";"', pos: position + totalPosition + drawMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+							}
+							break;
+						}
+						case 'draw.drawText': {
+							const drawTextMatch = section.substr(position).match(/^draw\.drawText\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							if (drawTextMatch) {
+								const params = drawTextMatch[0].replace(/\s/g, '').replace('draw.drawText(', '').replace(')END_OF_SECTION', '').split(',');
+								drawInstruction.type = InstructionType.DrawText;
+								drawInstruction.params = params;
+							} else {
+								result.errors.push({ error: 'Unexpected draw.drawText format ("draw.drawText(color, scale, text, x, y)"), or missing ";"', pos: position + totalPosition + drawMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 							}
 							break;
 						}
@@ -914,6 +980,35 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 				} else {
 					result.errors.push({ error: 'Unexpected execute format ("execute(myFunction)"), or missing ";"', pos: position + totalPosition + executeMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 				}
+			} else if (debugMatch) {
+				const debugMatchFormat = section.substr(position).match(/^debug\.log\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+				if (debugMatchFormat) {
+					const debugName = 'debug -' + name + '-' + (instructionSetStartLine + lineNumber + 2) + '-' + (position + totalPosition + debugMatch[0].length);
+
+					let value = debugMatchFormat[0].replace(/\s/g, '').replace('debug.log(', '').replace(')END_OF_SECTION', '');
+					const parsedValue = Number.parseFloat(value);
+					if(!Number.isNaN(parsedValue)) {
+						const subValueName = debugName + '-value';
+						result.values.push({
+							name: subValueName,
+							type: ValueType.number,
+							value: parsedValue,
+							line: instructionSetStartLine + lineNumber + 2,
+							pos: position + totalPosition
+						});
+						value = subValueName;
+					}
+
+					result.instructions.push({
+						type: InstructionType.DebugLog,
+						params: [value],
+						line: instructionSetStartLine + lineNumber + 2,
+						pos: position + totalPosition,
+					});
+				} else {
+					result.errors.push({ error: 'Unexpected debug.log format ("debug.log(myValue)"), or missing ";"', pos: position + totalPosition + debugMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+				}
+
 			} else if (mutateMatch) {
 				const evalMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))END_OF_SECTION$/g) as RegExpMatchArray;
 				const numberMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))END_OF_SECTION$/g) as RegExpMatchArray;

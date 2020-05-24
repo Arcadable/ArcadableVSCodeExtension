@@ -10,9 +10,11 @@ import * as vscode from 'vscode';
 import { Emulator } from './emulator';
 
 let client: LanguageClient;
-let currentPanel: vscode.WebviewPanel | undefined = undefined;
-let emulator: Emulator;
+
 export function activate(context: ExtensionContext) {
+	let currentPanel: vscode.WebviewPanel | undefined = undefined;
+	let emulator: Emulator;
+
 	let serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
 	);
@@ -46,17 +48,20 @@ export function activate(context: ExtensionContext) {
 
 	const arcLog = vscode.window.createOutputChannel("Arcadable");
 
-	this.emulator = new Emulator(arcLog);
+	emulator = new Emulator(arcLog);
 	let disposable = vscode.commands.registerCommand('arcadable-emulator.start', () => {
-		const columnToShowIn = vscode.window.activeTextEditor
-			? vscode.window.activeTextEditor.viewColumn
-			: vscode.ViewColumn.One;
-
-		if (this.currentPanel) {
-			this.currentPanel.reveal(columnToShowIn);
+		if (currentPanel && !(currentPanel as any)._store._isDisposed) {
+			currentPanel.reveal(vscode.ViewColumn.Beside);
 		} else {
-			this.currentPanel = this.emulator.openEmulatorWindow(context, columnToShowIn);
+			currentPanel = emulator.openEmulatorWindow(context, vscode.ViewColumn.Beside);
 		}
+
+		currentPanel.onDidDispose(() => {
+			if(emulator.compileResult.game) {
+				emulator.compileResult.game.stop();
+			}
+			currentPanel = null;
+		});
 	});
 }
 

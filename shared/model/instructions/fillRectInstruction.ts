@@ -90,7 +90,7 @@ export class FillRectInstruction extends Instruction {
         const drawRectColor = this.colorValue.getValue(executionOrder);
 
         return [ (e: number[]) => {
-            this.game.drawInstruction.next({
+            this.game.instructionEmitter.next({
                 command: 'fillRect',
                 topLeftDrawX,
                 topLeftDrawY,

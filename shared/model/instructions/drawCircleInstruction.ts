@@ -71,7 +71,7 @@ export class DrawCircleInstruction extends Instruction {
         const centerY = this.yValue.getValue(executionOrder);
 
         return [ (e: number[]) => {
-            this.game.drawInstruction.next({
+            this.game.instructionEmitter.next({
                 command: 'drawCircle',
                 color,
                 radius,

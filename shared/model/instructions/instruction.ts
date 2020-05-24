@@ -15,7 +15,8 @@ export enum InstructionType {
     DrawText,
     Clear,
     SetRotation,
-    RunSet,
+	RunSet,
+	DebugLog
 }
 export const instructionTypes = Object.keys(InstructionType)
 	.filter(key => isNaN(Number(InstructionType[key as any]))).map((value) => {
@@ -27,7 +28,7 @@ export const instructionTypes = Object.keys(InstructionType)
 
 }`, value: Number(value) };
 			case InstructionType.DrawPixel:
-				return { viewValue: 'Draw pixel', codeValue: null, value: Number(value) };
+				return { viewValue: 'Draw pixel', codeValue: 'draw.drawPixel(color, x, y);', value: Number(value) };
 			case InstructionType.DrawLine:
 				return { viewValue: 'Draw line', codeValue: 'draw.drawLine(color, x1, y1, x2, y2);', value: Number(value) };
 			case InstructionType.DrawRect:
@@ -43,13 +44,15 @@ export const instructionTypes = Object.keys(InstructionType)
 			case InstructionType.FillTriangle:
 				return { viewValue: 'Fill triangle', codeValue: 'draw.fillTriangle(color, x1, y1, x2, y2, x3, y3);', value: Number(value) };
 			case InstructionType.DrawText:
-				return { viewValue: 'Draw text', codeValue: null, value: Number(value) };
+				return { viewValue: 'Draw text', codeValue: 'draw.drawText(color, size, text, x, y);', value: Number(value) };
 			case InstructionType.Clear:
 				return { viewValue: 'Clear', codeValue: 'draw.clear;', value: Number(value) };
 			case InstructionType.SetRotation:
 				return { viewValue: 'Set rotation', codeValue: 'draw.setRotation(rotation);', value: Number(value) };
 			case InstructionType.RunSet:
 				return { viewValue: 'Run instructionset', codeValue: 'execute();', value: Number(value) };
+			case InstructionType.DebugLog:
+				return { viewValue: 'Log value', codeValue: 'debug.log(value);'}
 			default:
 				return { viewValue: '', value: 0};
 		}
