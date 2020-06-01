@@ -1,89 +1,40 @@
 import { Arcadable } from '../arcadable';
-import { NumberValueType, NumberValueTypePointer } from '../values/NumberValueType';
+import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 import { Instruction, InstructionType } from './instruction';
 
 export class DrawLineInstruction extends Instruction {
 
-    private _COLOR_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set colorValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._COLOR_VALUE = value;
-        this.called = true;
-    }
-    get colorValue(): NumberValueTypePointer<NumberValueType> {
-        return this._COLOR_VALUE;
-    }
-
-    private _X1_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set x1Value(value: NumberValueTypePointer<NumberValueType>) {
-        this._X1_VALUE = value;
-        this.called = true;
-    }
-    get x1Value(): NumberValueTypePointer<NumberValueType> {
-        return this._X1_VALUE;
-    }
-
-    private _Y1_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set y1Value(value: NumberValueTypePointer<NumberValueType>) {
-        this._Y1_VALUE = value;
-        this.called = true;
-    }
-    get y1Value(): NumberValueTypePointer<NumberValueType> {
-        return this._Y1_VALUE;
-    }
-
-    private _X2_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set x2Value(value: NumberValueTypePointer<NumberValueType>) {
-        this._X2_VALUE = value;
-        this.called = true;
-    }
-    get x2Value(): NumberValueTypePointer<NumberValueType> {
-        return this._X2_VALUE;
-    }
-
-    private _Y2_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set y2Value(value: NumberValueTypePointer<NumberValueType>) {
-        this._Y2_VALUE = value;
-        this.called = true;
-    }
-    get y2Value(): NumberValueTypePointer<NumberValueType> {
-        return this._Y2_VALUE;
-    }
 
     constructor(
         ID: number,
-        colorValue: NumberValueTypePointer<NumberValueType>,
-        x1Value: NumberValueTypePointer<NumberValueType>,
-        y1Value: NumberValueTypePointer<NumberValueType>,
-        x2Value: NumberValueTypePointer<NumberValueType>,
-        y2Value: NumberValueTypePointer<NumberValueType>,
+        public colorValue: NumberValueTypePointer<NumberValueType>,
+        public x1Value: NumberValueTypePointer<NumberValueType>,
+        public y1Value: NumberValueTypePointer<NumberValueType>,
+        public x2Value: NumberValueTypePointer<NumberValueType>,
+        public y2Value: NumberValueTypePointer<NumberValueType>,
         name: string,
         game: Arcadable
     ) {
         super(ID, InstructionType.DrawLine, name, game);
-        this.colorValue = colorValue;
-        this.x1Value = x1Value;
-        this.y1Value = y1Value;
-        this.x2Value = x2Value;
-        this.y2Value = y2Value;
     }
 
 
-    execute(executionOrder: number[]): ((executionOrder: number[]) => any)[] {
-        this.called = true;
-        this.executionOrder = executionOrder;
+    execute(): (() => Promise<any>)[] {
 
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
-
-
-        const pos1X = this.x1Value.getValue(executionOrder);
-        const pos1Y = this.y1Value.getValue(executionOrder);
-        const pos2X = this.x2Value.getValue(executionOrder);
-        const pos2Y = this.y2Value.getValue(executionOrder);
-
-        const lineColor = this.colorValue.getValue(executionOrder);
-        return [ (e: number[]) => {
+        return [async () => {
+            const [
+                pos1X,
+                pos1Y,
+                pos2X,
+                pos2Y,
+                lineColor
+            ] = await Promise.all([
+                this.x1Value.getValue(),
+                this.y1Value.getValue(),
+                this.x2Value.getValue(),
+                this.y2Value.getValue(),
+                this.colorValue.getValue()
+            ]);
             this.game.instructionEmitter.next({
                 command: 'drawLine',
                 lineColor,

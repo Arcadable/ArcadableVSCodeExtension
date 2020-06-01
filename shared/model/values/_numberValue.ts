@@ -2,32 +2,37 @@ import { NumberValueType } from './_numberValueType';
 import { ValueType } from './value';
 import { Arcadable } from '../arcadable';
 
-export class AnalogInputValue extends NumberValueType {
+export class NumberValue extends NumberValueType {
+
 
     constructor(
         ID: number,
-        public index: number,
+        public value: number,
+        public size: number,
         name: string,
         game: Arcadable
-      ) {
-          super(ID, ValueType.analogInputPointer, name, game);
-      }
+    ) {
+        super(ID, ValueType.number, name, game);
+    }
+
 
     async get(): Promise<number> {
-        return this.game.systemConfig.analogInputValues[this.index];
+        return this.value;
     }
 
     async set(newValue: number) {
+        this.value = newValue;
     }
     async isTruthy() {
-        return await this.get() !== 0;
+        return (await this.get()) !== 0;
     }
     stringify() {
         return JSON.stringify({
             ID: this.ID,
             name: this.name,
             type: this.type,
-            index: this.index,
+            value: this.value,
+            size: this.size
         });
     }
 }

@@ -1,77 +1,49 @@
 import { Arcadable } from '../arcadable';
-import { NumberValueType, NumberValueTypePointer } from './NumberValueType';
+import { NumberValueType, NumberValueTypePointer } from './_numberValueType';
 import { ValueType } from './value';
 
 export class PixelValue extends NumberValueType {
 
-    private _X_CALC!: NumberValueTypePointer<NumberValueType>;
-    set XCalc(value: NumberValueTypePointer<NumberValueType>) {
-        this._X_CALC = value;
-        this.called = true;
-    }
-    get XCalc(): NumberValueTypePointer<NumberValueType> {
-        return this._X_CALC;
-    }
-
-    private _Y_CALC!: NumberValueTypePointer<NumberValueType>;
-    set YCalc(value: NumberValueTypePointer<NumberValueType>) {
-        this._Y_CALC = value;
-        this.called = true;
-    }
-    get YCalc(): NumberValueTypePointer<NumberValueType> {
-        return this._Y_CALC;
-    }
-
     constructor(
         ID: number,
-        xCalc: NumberValueTypePointer<NumberValueType>,
-        yCalc: NumberValueTypePointer<NumberValueType>,
+        public XCalc: NumberValueTypePointer<NumberValueType>,
+        public YCalc: NumberValueTypePointer<NumberValueType>,
         name: string,
         game: Arcadable
     ) {
         super(ID, ValueType.pixelIndex, name, game);
-        this.XCalc = xCalc;
-        this.YCalc = yCalc;
     }
 
 
-    get(executionOrder: number[]): number {
-        this.called = true;
-        this.executionOrder = executionOrder;
+    async get(): Promise<number> {
+        const x = await this.XCalc.getValue();
+        const y = await this.YCalc.getValue();
 
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
-        /*new Promise((res, rej) => {
+        const color = await new Promise<number>((res, rej) => {
             this.game.instructionEmitter.next({
                 command: 'getPixel',
+                x,
+                y,
                 callback: (color: number) => {
                     res(color);
                 }
             })
-        }).then((color) => {
-            return color;
-        })*/
-        return 0;
+        });
+        return color;
     }
 
-    set(newValue: number, executionOrder: number[]) {
-        this.called = true;
-        this.executionOrder = executionOrder;
-
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
-
+    async set(newValue: number) {
+        const x = await this.XCalc.getValue();
+        const y = await this.YCalc.getValue();
         this.game.instructionEmitter.next({
             command: 'drawPixel',
-            x: this.XCalc.getValue(executionOrder),
-            y: this.YCalc.getValue(executionOrder),
+            x,
+            y,
             pixelColor: newValue,
         });
     }
-    isTruthy(executionOrder: number[]) {
-        return this.get(executionOrder) !== 0;
+    async isTruthy() {
+        return (await this.get()) !== 0;
     }
 
     stringify() {

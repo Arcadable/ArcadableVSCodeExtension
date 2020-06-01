@@ -1,8 +1,11 @@
 {
 	"name": "arcadable-emulator",
 	"description": "Arcadable Emulator",
+	"publisher": "Arcadable",
+	"repository": { "type": "git", "url": "https://github.com/Arcadable/ArcadableVSCodeExtension.git" },
 	"license": "MIT",
-	"version": "1.0.0",
+	"version": "1.0.1",
+	"icon": "./ArcadableIconx128.png",
 	"categories": [],
 	"engines": {
 		"vscode": "^1.43.0"

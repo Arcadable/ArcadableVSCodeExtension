@@ -1,50 +1,29 @@
-import { NumberValueType } from './NumberValueType';
+import { NumberValueType } from './_numberValueType';
 import { ValueType } from './value';
 import { Arcadable } from '../arcadable';
 
 export class DigitalInputValue extends NumberValueType {
 
-    private _INDEX!: number;
-    set index(value: number) {
-        this._INDEX = value;
-        this.called = true;
-    }
-    get index(): number {
-        return this._INDEX;
-    }
-
 
     constructor(
         ID: number,
-        index: number,
+        public index: number,
         name: string,
         game: Arcadable
       ) {
           super(ID, ValueType.digitalInputPointer, name, game);
-          this.index = index;
       }
 
-    get(executionOrder: number[]): 0|1 {
-        this.called = true;
-        this.executionOrder = executionOrder;
-
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
-
+    async get(): Promise<0|1> {
         return this.game.systemConfig.digitalInputValues[this.index];
     }
 
-    set(newValue: number, executionOrder: number[]) {
-        this.called = true;
-        this.executionOrder = executionOrder;
+    async set(newValue: number) {
 
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
     }
-    isTruthy(executionOrder: number[]) {
-        return this.get(executionOrder) !== 0;
+
+    async isTruthy() {
+        return await this.get() !== 0;
     }
 
     stringify() {

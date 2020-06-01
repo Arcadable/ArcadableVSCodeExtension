@@ -3,10 +3,24 @@ html {
 }
 canvas {
     image-rendering: pixelated; 
-    width: 400px;
-    height: 400px;
+    max-width: 400px;
+    max-height: 400px;
+    width: 100%;
     background-color: black;
 }
 .hiddenCanvas {
     display: none;
+}
+.simulationContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.controlsContainer {
+    display: flex;
+    flex-direction: column;
+}
+#digitalInputContainer, #analogInputContainer {
+    display: flex;
+    flex-direction: column;
 }

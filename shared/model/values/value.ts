@@ -39,28 +39,18 @@ export const valueTypes = Object.keys(ValueType).filter(key => isNaN(Number(Valu
 
 export abstract class Value extends LogicElement {
 
-    private _TYPE!: ValueType;
-    set type(value: ValueType) {
-    	this._TYPE = value;
-    	this.called = true;
-    }
-    get type(): ValueType {
-    	return this._TYPE;
-    }
-
     constructor(
     	ID: number,
-    	type: ValueType,
+    	public type: ValueType,
     	name: string,
     	game: Arcadable
     ) {
     	super(ID, name, game);
-    	this.type = type;
     }
 
-    abstract get(executionOrder: number[]): any;
-    abstract set(newValue: any, executionOrder: number[]): void;
-    abstract isTruthy(executionOrder: number[]): boolean;
+    abstract async get(): Promise<any>;
+    abstract async set(newValue: any): Promise<void>;
+    abstract async isTruthy(): Promise<boolean>;
 
     stringify() {
     	return JSON.stringify({
@@ -78,6 +68,6 @@ export abstract class ValuePointer<T extends Value> {
     	this.ID = ID;
     	this.game = game;
     }
-    abstract getObject(executionOrder: number[]): T;
-    abstract getValue(executionOrder: number[]): any;
+    abstract getObject(): T;
+    abstract async getValue(): Promise<any>;
 }

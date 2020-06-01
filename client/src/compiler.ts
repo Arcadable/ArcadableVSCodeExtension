@@ -1,7 +1,14 @@
 import * as vscode from 'vscode';
-import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value, InstructionType, AnalogInputValue, DigitalInputValue, EvaluationValue, ListValue, NumberValue, PixelValue, SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType, ValuePointer, NumberArrayValueTypePointer, ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction, DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction, MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, NumberArrayValueType, InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, DebugLogInstruction } from 'arcadable-shared';
+import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value, InstructionType,
+	AnalogInputValue, DigitalInputValue, EvaluationValue, ListValue, NumberValue, PixelValue,
+	SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType, ValuePointer, NumberArrayValueTypePointer,
+	ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction,
+	DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction,
+	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, NumberArrayValueType,
+	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, DebugLogInstruction, FunctionParseResult,
+	ValueParseResult } from 'arcadable-shared';
 import { SlowBuffer } from 'buffer';
-import { ValueArrayValueTypePointer } from 'arcadable-shared/out/model/values/valueArrayValueType';
+import { ValueArrayValueTypePointer, ValueArrayValueType } from 'arcadable-shared/out/model/values/valueArrayValueType';
 
 
 export class ArcadableCompiler {
@@ -18,6 +25,7 @@ export class ArcadableCompiler {
 
 		const parseResult: {[key: string]: ParsedFile} = {};
 		const mainDoc = this.docs[this.docs['root'] + this.docs['main']] as vscode.TextDocument;
+
 		parseResult[mainDoc.uri.path] = new ArcadableParser().parse(mainDoc.uri.path, mainDoc.getText().split(/\n/g));
 
 		let imports: {[key: string]: string} = {};
@@ -62,20 +70,38 @@ export class ArcadableCompiler {
 			error: string
 		}[]);
 		this.compileResult.parseErrors = parseErrors;
+
 		if (parseErrors.length === 0) {
-			const gameData = this.checkAndMerge(parseResult);
-			this.compileResult.parseErrors = gameData.errors;
-			if (this.compileResult.parseErrors.length === 0) {
-				const rootInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
-				if (rootInstructionSet !== -1) {
-					this.compileResult.assignGameData(gameData);
-				} else {
-					this.compileResult.compileErrors.push({
-						file: '',
-						line: 0,
-						pos: 0,
-						error: 'Cannot find "Main" function'
-					})
+
+			const parsedProgram = new ParsedProgram(parseResult);
+			this.compileResult.compileErrors.push(...parsedProgram.compileErrors);
+			if (this.compileResult.compileErrors.length === 0) {
+				const gameData = this.checkAndMerge(parsedProgram);
+				this.compileResult.compileErrors = gameData.compileErrors;
+				if (this.compileResult.compileErrors.length === 0) {
+					const mainInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
+					const renderInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'render') !== -1);
+	
+					if (mainInstructionSet === -1) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Cannot find "Main" function'
+						})
+					} 
+					if (renderInstructionSet === -1) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Cannot find "Render" function'
+						})
+					} 
+					
+					if (mainInstructionSet !== -1 && renderInstructionSet !== -1) {
+						this.compileResult.assignGameData(gameData);
+					}
 				}
 			}
 		}
@@ -84,37 +110,17 @@ export class ArcadableCompiler {
 	}
 
 
-	checkAndMerge(parseResult: {[key: string]: ParsedFile}) {
-		let combinedResult: ParsedFile = Object.keys(parseResult).reduce((acc, curr) => ({
-			...acc,
-			values: [
-				...acc.values,
-				...parseResult[curr].values
-			],
-			instructionSets: [
-				...acc.instructionSets,
-				...parseResult[curr].instructionSets
-			],
-		}), {
-			filePath: '',
-			imports: [],
-			values: [],
-			instructionSets: [],
-			errors: [],
-			compressedValues: [],
-			compressedInstructions: [],
-			compressedInstructionSets: []
-		});
+	checkAndMerge(parsedProgram: ParsedProgram): ParsedProgram {
 
-		combinedResult = this.checkForReferenceProblems(combinedResult);
-		if (combinedResult.errors.length === 0) {
-			combinedResult = this.compress(combinedResult);
+		parsedProgram = this.checkForReferenceProblems(parsedProgram);
+		if (parsedProgram.compileErrors.length === 0) {
+
+			parsedProgram = this.compress(parsedProgram);
 		}
-		return combinedResult;
+		return parsedProgram;
 	}
 
-	compress(data: ParsedFile): ParsedFile {
-
+	compress(data: ParsedProgram): ParsedProgram {
 		let compressedValues: {
 			type: ValueType,
 			value: any,
@@ -155,7 +161,6 @@ export class ArcadableCompiler {
 			data.values[index].compressedIndex = valueIndex;
 			compressedValues[valueIndex].linked.push(v);
 		});
-
 
 		let compressedInstructions: {
 			type: InstructionType;
@@ -208,9 +213,11 @@ export class ArcadableCompiler {
 		});
 
 
+
 		let optimized = true;
 		let optimizationLoops = 0;
 		while (optimized && optimizationLoops < 100) {
+
 			optimizationLoops++;
 			optimized = false;
 			compressedInstructionSets.forEach((is, setIndex) => {
@@ -288,6 +295,7 @@ export class ArcadableCompiler {
 					}
 				});
 			});
+
 			const indexChanges = {};
 			compressedValues = compressedValues.reduce((acc, curr, oldIndex) => {
 				const existingIndex = acc.findIndex(existing =>
@@ -318,6 +326,7 @@ export class ArcadableCompiler {
 					compressedIndex?: number;
 				}[]
 			}[]);
+
 			Object.keys(indexChanges).forEach(oldIndex => {
 				const newIndex = indexChanges[oldIndex];
 				compressedInstructions.forEach(i => {
@@ -453,7 +462,7 @@ export class ArcadableCompiler {
 		return data;
 	}
 
-	checkForReferenceProblems(data: ParsedFile): ParsedFile {
+	checkForReferenceProblems(data: ParsedProgram): ParsedProgram {
 
 		data.values.forEach(v => {
 			let count = 0;
@@ -463,7 +472,7 @@ export class ArcadableCompiler {
 				}
 			});
 			if (count > 1) {
-				data.errors.push({
+				data.compileErrors.push({
 					file: v.file,
 					line: v.line,
 					pos: v.pos,
@@ -476,9 +485,9 @@ export class ArcadableCompiler {
 				value.values.forEach(v1 => {
 					const valueIndex = data.values.findIndex(v2 => v2.name === v1)
 					if (valueIndex === -1) {
-						data.errors.push(this.referenceNotFoundError(v.file, v.line, v.pos, v1));
+						data.compileErrors.push(this.referenceNotFoundError(v.file, v.line, v.pos, v1));
 					} else if (data.values[valueIndex].type !== value.type) {
-						data.errors.push({
+						data.compileErrors.push({
 							file: v.file,
 							line: v.line,
 							pos: v.pos,
@@ -488,13 +497,16 @@ export class ArcadableCompiler {
 				});
 			} else if (v.type === ValueType.pixelIndex) {
 				const values = [v.value.x, v.value.y] as string[];
-				data.errors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
+				data.compileErrors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
 			} else if (v.type === ValueType.evaluation) {
 				const values = [v.value.left, v.value.right] as string[];
-				data.errors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
+				data.compileErrors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
 			} else if (v.type === ValueType.listValue) {
-				const values = [v.value.list, v.value.index] as string[];
-				data.errors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
+				data.compileErrors.push(...this.checkNumbericalReferences([v.value.index], data, v.file, v.line, v.pos));
+				const valueIndex = data.values.findIndex(v2 => v2.name === v.value.list)
+				if (valueIndex === -1) {
+					data.compileErrors.push(this.referenceNotFoundError(v.file, v.line, v.pos, v.value.list));
+				}
 			}
 		});
 
@@ -507,7 +519,7 @@ export class ArcadableCompiler {
 					}
 				});
 				if (count > 1) {
-					data.errors.push({
+					data.compileErrors.push({
 						file: i.instructions[0].file,
 						line: i.instructions[0].line,
 						pos: 0,
@@ -527,24 +539,24 @@ export class ArcadableCompiler {
 						case InstructionType.FillTriangle:
 						case InstructionType.MutateValue:
 						case InstructionType.SetRotation: {
-							data.errors.push(...this.checkNumbericalReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
+							data.compileErrors.push(...this.checkNumbericalReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
 							break;
 						} 
 						case InstructionType.RunCondition: {
-							data.errors.push(...this.checkInstructionSetReferences([instruction.params[1], instruction.params[1]], data, instruction.file, instruction.line, instruction.pos));
+							data.compileErrors.push(...this.checkInstructionSetReferences([instruction.params[1], instruction.params[1]], data, instruction.file, instruction.line, instruction.pos));
 							break;
 						} 
 						case InstructionType.RunSet: {
-							data.errors.push(...this.checkInstructionSetReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
+							data.compileErrors.push(...this.checkInstructionSetReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
 							break;
 						}
 						case InstructionType.DrawText: {
-							data.errors.push(...this.checkNumbericalReferences(instruction.params.filter((p, i) => i !== 2), data, instruction.file, instruction.line, instruction.pos));
+							data.compileErrors.push(...this.checkNumbericalReferences(instruction.params.filter((p, i) => i !== 2), data, instruction.file, instruction.line, instruction.pos));
 							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[2]);
 							if (valueIndex === -1) {
-								data.errors.push(this.referenceNotFoundError(instruction.file, instruction.line, instruction.pos, instruction.params[0]));
+								data.compileErrors.push(this.referenceNotFoundError(instruction.file, instruction.line, instruction.pos, instruction.params[0]));
 							} else if (data.values[valueIndex].type !== ValueType.text) {
-								data.errors.push({
+								data.compileErrors.push({
 									file: instruction.file,
 									line: instruction.line,
 									pos: instruction.pos,
@@ -555,9 +567,9 @@ export class ArcadableCompiler {
 						case InstructionType.DebugLog: {
 							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[0]);
 							if (valueIndex === -1) {
-								data.errors.push(this.referenceNotFoundError(instruction.file, instruction.line, instruction.pos, instruction.params[0]));
+								data.compileErrors.push(this.referenceNotFoundError(instruction.file, instruction.line, instruction.pos, instruction.params[0]));
 							} else if (data.values[valueIndex].type === ValueType.listDeclaration) {
-								data.errors.push({
+								data.compileErrors.push({
 									file: instruction.file,
 									line: instruction.line,
 									pos: instruction.pos,
@@ -569,13 +581,6 @@ export class ArcadableCompiler {
 						}
 					}
 				});
-			} else {
-				data.errors.push({
-					file: '',
-					line: 0,
-					pos: 0,
-					error: 'Empty function with identifier "' + i.name + '".'
-				})
 			}
 		});
 
@@ -583,7 +588,7 @@ export class ArcadableCompiler {
 		return data;
 	}
 
-	checkNumbericalReferences(values: string[], data: ParsedFile, file: string, line: number, pos: number) {
+	checkNumbericalReferences(values: string[], data: ParsedProgram, file: string, line: number, pos: number) {
 		const errors = [];
 		values.forEach(v1 => {
 			const valueIndex = data.values.findIndex(v2 => v2.name === v1)
@@ -601,7 +606,7 @@ export class ArcadableCompiler {
 		return errors;
 	}
 
-	checkInstructionSetReferences(instructionSets: string[], data: ParsedFile, file: string, line: number, pos: number) {
+	checkInstructionSetReferences(instructionSets: string[], data: ParsedProgram, file: string, line: number, pos: number) {
 		const errors = [];
 		instructionSets.forEach(i1 => {
 			const instructionSetIndex = data.instructionSets.findIndex(i2 => i2.name === i1)
@@ -627,9 +632,167 @@ export class ArcadableCompiler {
 	}
 }
 
+export class ParsedProgram {
+	values: {
+        name: string;
+        type: ValueType;
+        value: any;
+        line: number;
+        pos: number;
+		file: string;
+		compressedIndex?: number;
+    }[] = [];
+    instructionSets: {
+        name: string;
+        instructions: {
+            line: number;
+            pos: number;
+            file: string;
+            type: InstructionType;
+			params: string[];
+			compressedIndex?: number;
+		}[];
+		compressedIndex?: number;
+    }[] = [];
+    compressedValues: {
+        type: ValueType,
+		value: any,
+		mutatable: boolean,
+        linked:{
+            name: string;
+            line: number;
+            pos: number;
+            file: string;
+		}[];
+		compressedIndex?: number;
+    }[] = [];
+    compressedInstructions: {
+        type: InstructionType,
+        params: string[],
+        linked:{
+            line: number;
+            pos: number;
+            file: string;
+        }[]
+    }[] = [];
+    compressedInstructionSets: {
+		instructions: number[],
+		linked: {
+			name: string;
+		}[]
+	}[] = [];
+	compileErrors: {file: string, line: number, pos: number, error: string}[] = [];
+
+	constructor(data: {[key: string]: ParsedFile}) {
+		const functionParseResultExecutables: {
+			file: string,
+			executables: (() => FunctionParseResult[])[]
+		}[] = Object.keys(data).reduce((acc, curr) => [
+			...acc,
+			{
+				file: data[curr].filePath,
+				executables: data[curr].functionParseResults
+			}
+		], []);
+
+		const valueParseResults: {
+			parseResult: ValueParseResult | null;
+			line: number;
+			pos: number;
+			file: string;
+		}[] = Object.keys(data).reduce((acc, curr) => [
+			...acc,
+			...data[curr].valueParseResults
+		], [])
+		functionParseResultExecutables.forEach(e => {
+			e.executables.forEach(executable => {
+
+				const functions = executable();
+
+				this.instructionSets.push(
+					...functions.map(f => ({
+						name: f.name,
+						instructions: f.instructions.map(i => ({
+							line: i.line,
+							pos: i.pos,
+							file: e.file,
+							type: i.type,
+							params: i.params
+						}))
+					}))
+				);
+
+				this.compileErrors.push(
+					...functions
+						.reduce((acc, curr) => [...acc, ...curr.errors.map(err => ({
+							file: e.file,
+							line: err.line,
+							pos: err.pos,
+							error: err.error
+						}))], [] as {
+						file: string;
+						line: number;
+						pos: number;
+						error: string;
+					}[])
+				);
+
+				valueParseResults.push(...functions.reduce((acc, curr) => [...acc, ...curr.values.map(v => ({
+					parseResult: {
+						value: {
+							type: v.type,
+							value: v.value,
+							name: v.name,
+						},
+						errors: []
+					},
+					line: v.line,
+					pos: v.pos,
+					file: e.file
+				}))], [] as {
+					parseResult: ValueParseResult | null;
+					line: number;
+					pos: number;
+					file: string;
+				}[]));
+			});
+
+		});
+
+		if (valueParseResults && valueParseResults.length > 0) {
+			this.values.push(...valueParseResults.filter(v => !!v.parseResult && !!v.parseResult.value).map(v => ({
+				name: ((v.parseResult as ValueParseResult).value as any).name,
+				type: ((v.parseResult as ValueParseResult).value as any).type,
+				value: ((v.parseResult as ValueParseResult).value as any).value,
+				line: v.line,
+				pos: v.pos,
+				file: v.file
+			})));
+			this.compileErrors.push(
+				...valueParseResults
+					.filter(v => !!v.parseResult)
+					.reduce((acc, curr) => [
+						...acc,
+						...(curr.parseResult as ValueParseResult).errors.map(e => ({
+							file: curr.file,
+							line: curr.line,
+							pos: e.pos,
+							error: e.error
+						}))
+					], [] as {
+					file: string;
+					line: number;
+					pos: number;
+					error: string;
+				}[])
+			);
+		}
+
+	}
+}
 
 export class CompileResult {
-
+	parsedProgram: ParsedProgram;
 	game: Arcadable;
 	compileErrors: {file: string, line: number, pos: number, error: string}[];
 	parseErrors: {file: string, line: number, pos: number, error: string}[];
@@ -639,7 +802,8 @@ export class CompileResult {
 		this.parseErrors = [];
 	}
 	
-	assignGameData(gameData: ParsedFile) {
+	assignGameData(gameData: ParsedProgram) {
+		this.parsedProgram = gameData;
 		const values = gameData.compressedValues.map((v, i) => {
 			switch(v.type) {
 				
@@ -663,7 +827,7 @@ export class CompileResult {
 				case ValueType.listValue: {
 					return new ListValue(
 						i,
-						new ValueArrayValueTypePointer<Value>(+v.value.list, this.game),
+						new ValueArrayValueTypePointer<ValueArrayValueType>(+v.value.list, this.game),
 						new NumberValueTypePointer<NumberValueType>(+v.value.index, this.game),
 						'',
 						this.game
@@ -848,8 +1012,8 @@ export class CompileResult {
 					} else if (values[+inst.params[0]].type === ValueType.listDeclaration) {
 						return new MutateValueInstruction(
 							i,
-							new ValueArrayValueTypePointer<Value>(+inst.params[0], this.game),
-							new ValueArrayValueTypePointer<Value>(+inst.params[1], this.game),
+							new ValueArrayValueTypePointer<ValueArrayValueType>(+inst.params[0], this.game),
+							new ValueArrayValueTypePointer<ValueArrayValueType>(+inst.params[1], this.game),
 							'',
 							this.game
 						);
@@ -869,7 +1033,7 @@ export class CompileResult {
 						i,
 						new NumberValueTypePointer<EvaluationValue>(+inst.params[0], this.game),
 						new InstructionSetPointer(+inst.params[1], this.game),
-						new InstructionSetPointer(+inst.params[2], this.game),
+						inst.params[2].length > 0 ? new InstructionSetPointer(+inst.params[2], this.game) : null,
 						'',
 						this.game
 					);
@@ -909,13 +1073,15 @@ export class CompileResult {
 			'',
 			this.game
 		));
-		const rootInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
+		const mainInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
+		const renderInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'render') !== -1);
 
 		this.game.setGameLogic(
 			values,
 			instructions,
 			instructionSets,
-			rootInstructionSet
+			mainInstructionSet,
+			renderInstructionSet
 		);
 	}
 }

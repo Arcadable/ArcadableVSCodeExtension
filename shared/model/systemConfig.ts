@@ -1,15 +1,17 @@
 import { Arcadable } from '../model/arcadable';
 
 
-export enum SystemConfigType { screenWidth, screenHeight, targetMillisPerFrame, currentMillis, isZigZag }
+export enum SystemConfigType { screenWidth, screenHeight, targetMainMillis, targetRenderMillis, currentMillis, isZigZag }
 export const systemConfigTypes = Object.keys(SystemConfigType).filter((key: string) => isNaN(Number(SystemConfigType[key as any]))).map((value) => {
     switch (Number(value)) {
       case SystemConfigType.screenWidth:
         return { viewValue: 'Screen width', value: Number(value) };
       case SystemConfigType.screenHeight:
         return { viewValue: 'Screen height', value: Number(value) };
-      case SystemConfigType.targetMillisPerFrame:
-        return { viewValue: 'Min millis per frame', value: Number(value) };
+      case SystemConfigType.targetMainMillis:
+        return { viewValue: 'Min millis per main step', value: Number(value) };
+      case SystemConfigType.targetRenderMillis:
+        return { viewValue: 'Min millis per render step', value: Number(value) };
       case SystemConfigType.currentMillis:
         return { viewValue: 'Current millis', value: Number(value) };
       case SystemConfigType.isZigZag:
@@ -27,7 +29,8 @@ export class SystemConfig {
     constructor(
         public screenWidth: number,
         public screenHeight: number,
-        public targetMillisPerFrame: number,
+        public targetMainMillis: number,
+        public targetRenderMillis: number,
         public layoutIsZigZag: boolean,
         public digitalInputPinsAmount: number,
         public analogInputPinsAmount: number,
@@ -52,8 +55,11 @@ export class SystemConfig {
             case SystemConfigType.screenHeight: {
                 return this.screenHeight;
             }
-            case SystemConfigType.targetMillisPerFrame: {
-                return this.targetMillisPerFrame;
+            case SystemConfigType.targetMainMillis: {
+                return this.targetMainMillis;
+            }
+            case SystemConfigType.targetRenderMillis: {
+                return this.targetMainMillis;
             }
             case SystemConfigType.currentMillis: {
                 return new Date().getTime() - this.startMillis;
@@ -83,7 +89,8 @@ export class SystemConfig {
         return JSON.stringify({
             screenWidth: this.screenWidth,
             screenHeight: this.screenHeight,
-            targetMillisPerFrame: this.targetMillisPerFrame,
+            targetMainMillis: this.targetMainMillis,
+            targetRenderMillis: this.targetRenderMillis,
             layoutIsZigZag: this.layoutIsZigZag,
             digitalInputPinsAmount: this.digitalInputPinsAmount,
             analogInputPinsAmount: this.analogInputPinsAmount

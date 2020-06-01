@@ -9,7 +9,7 @@ import { DrawPixelInstruction } from './instructions/drawPixelInstruction';
 import { DrawLineInstruction } from './instructions/drawLineInstruction';
 import { FillCircleInstruction } from './instructions/fillCircleInstruction';
 import { DrawCircleInstruction } from './instructions/drawCircleInstruction';
-import { Subject } from 'rxjs';
+import { Subject, timer } from 'rxjs';
 import { take } from 'rxjs/operators';
 import { Instruction, InstructionType } from './instructions/instruction';
 import { InstructionSet } from './instructions/instructionSet';
@@ -20,33 +20,33 @@ import { AnalogInputValue } from './values/analogInputValue';
 import { DigitalInputValue } from './values/digitalInputValue';
 import { ListDeclaration } from './values/listDeclaration';
 import { ListValue } from './values/listValue';
-import { NumberValue } from './values/numberValue';
+import { NumberValue } from './values/_numberValue';
 import { PixelValue } from './values/pixelValue';
 import { SystemConfigValue } from './values/systemConfigValue';
 import { TextValue } from './values/textValue';
 import { SetRotationInstruction } from './instructions/setRotationInstruction';
 import { RunSetInstruction } from './instructions/runSetInstruction';
+import { ValueArrayValueType } from './values/valueArrayValueType';
 
 const fp = require('ieee-float');
 
 
 export class Arcadable {
 
-    resetCalled = new Subject<boolean>();
-    breakEncountered = new Subject<boolean>();
-    instructionEmitter = new Subject<any>();
+	instructionEmitter = new Subject<any>();
+	interruptedEmitter = new Subject<any>();
+
     values: {[key: number]: Value} = {};
     instructions: {[key: number]: Instruction} = {};
     instructionSets: {[key: number]: InstructionSet} = {};
-    rootInstructionSet: number = 0;
+	mainInstructionSet: number = 0;
+	renderInstructionSet: number = 0;
     systemConfig: SystemConfig;
 
-    prevMillis = 0;
+	prevMainMillis = 0;
+	prevRenderMillis = 0;
     startMillis = 0;
 
-    running = false;
-    wait = false;
-    waitSubjects: Subject<void>[] = [];
     constructor(
     	systemConfig: SystemConfig
     ) {
@@ -58,15 +58,22 @@ export class Arcadable {
     	values: {[key: number]: Value},
     	instructions: {[key: number]: Instruction},
     	instructionSets: {[key: number]: InstructionSet},
-    	rootInstructionSet: number
+		mainInstructionSet: number,
+		renderInstructionSet: number
     ) {
+		Object.keys(this.values).forEach(k => (this.values[+k] as any).game = undefined );
+		Object.keys(this.instructions).forEach(k => (this.instructions[+k] as any).game = undefined );
+		Object.keys(this.instructionSets).forEach(k => (this.instructionSets[+k] as any).game = undefined );
+
     	this.values = values;
     	this.instructions = instructions;
     	this.instructionSets = instructionSets;
-    	this.rootInstructionSet = rootInstructionSet;
+		this.mainInstructionSet = mainInstructionSet;
+		this.renderInstructionSet = renderInstructionSet;
+
     }
 
-    async start() {
+    start() {
 
     	Object.keys(this.values).forEach(k => {
     		if ((this.values[Number(k)] as Value).type === ValueType.evaluation) {
@@ -74,87 +81,74 @@ export class Arcadable {
     		}
     	});
 
-    	this.running = true;
-    	while (this.running) {
-			this.waitSubjects.forEach(s => s.next());
-    		await this.step();
-    	}
+		this.systemConfig.startMillis = new Date().getTime();
+		this.startMain();
+		this.startRender();
+	}
+	stop(error?: {message: string, values: number[], instructions: number[]}) {
+		this.interruptedEmitter.next(error);
     }
+	startRender() {
+		const timerSubscr = timer(0, this.systemConfig.targetRenderMillis).subscribe(() => {
+			try {
+				this.doRenderStep();
+			} catch (e) {
+				this.instructionEmitter.next({message: 'An unexpected error occured.'});
+			}
+		});
+		const interruptSubscr = this.interruptedEmitter.subscribe(e => {
+			timerSubscr.unsubscribe();
+			interruptSubscr.unsubscribe();
+		})
+	}
 
-    stop() {
-    	this.running = false;
-    }
+	startMain() {
+		const timerSubscr = timer(0, this.systemConfig.targetMainMillis).subscribe(() => {
+			try {
+				this.doMainStep();
+			} catch (e) {
+				this.instructionEmitter.next({message: 'An unexpected error occured.'});
+			}
+		});
+		const interruptSubscr = this.interruptedEmitter.subscribe(e => {
+			timerSubscr.unsubscribe();
+			interruptSubscr.unsubscribe();
+		})
+	}
 
-    async step() {
-		this.resetCalled.next();
-    	this.waitSubjects = [];
-    	const currentMillis = new Date().getTime();
-    	if (currentMillis - this.prevMillis < this.systemConfig.targetMillisPerFrame) {
-    		await new Promise( resolve =>
-    			setTimeout(
-    				resolve,
-    				this.systemConfig.targetMillisPerFrame - (new Date().getTime() - this.prevMillis)
-    			)
-    		);
-    	}
-    	this.doGameStep();
-    	this.prevMillis = new Date().getTime();
 
-    }
-
-    private async doGameStep() {
+    private async doMainStep() {
     	this.systemConfig.fetchInputValues();
-    	const lastSubject = new Subject<void>();
-    	const rootInstructionSet = this.instructionSets[
-    		this.rootInstructionSet
-    	] as InstructionSet;
-    	rootInstructionSet.instructions.forEach(async (instructionPointer, i) => {
-    		if (this.wait) {
-    			const waitFor = new Subject<void>();
-    			this.waitSubjects.push(waitFor);
-    			await waitFor.pipe(take(1)).toPromise();
-    		}
-    		await this.execute((executionOrder: number[]) => instructionPointer.execute(executionOrder), [i]);
-    		if (i + 1 === rootInstructionSet.size) {
-    			lastSubject.next();
-    		}
-    	});
-    	if ( this.wait && rootInstructionSet.size > 0) {
-    		await lastSubject.pipe(take(1)).toPromise();
-    	}
+    	const mainInstructionSet = this.instructionSets[
+    		this.mainInstructionSet
+		] as InstructionSet;
+
+		const executables = mainInstructionSet.instructions.map((instructionPointer) =>
+			(async () => await this.execute(async () => await instructionPointer.execute()))
+		);
+		await executables.reduce(async (p, fn) => { await p; return fn() }, Promise.resolve())
+
+	}
+	private async doRenderStep() {
+    	const renderInstructionSet = this.instructionSets[
+    		this.renderInstructionSet
+		] as InstructionSet;
+
+		const executables = renderInstructionSet.instructions.map((instructionPointer) =>
+			(async () => await this.execute(async () => await instructionPointer.execute()))
+		);
+		await executables.reduce(async (p, fn) => { await p; return fn() }, Promise.resolve())
+
+		this.instructionEmitter.next({command: 'renderDone'})
     }
 
-    async execute(action: (executionOrder: number[]) => any, executionOrder: number[]) {
-    	if (executionOrder.length % 300 === 0) {
-    		const lastSubject = new Subject<void>();
-    		setTimeout(() => {
-    			this.doExecute(action, executionOrder);
-    			lastSubject.next();
-    		}, 0);
-    		await lastSubject.pipe(take(1)).toPromise();
-    	} else {
-    		this.doExecute(action, executionOrder);
-		}
-    }
 
-    async doExecute(action: (executionOrder: number[]) => any, executionOrder: number[]) {
-    	const lastSubject = new Subject<void>();
-    	const actions: any[] = action(executionOrder) || [];
-    	(this.wait ? actions.reverse() : actions).forEach(async (a: (executionOrder: number[]) => any, i: number) => {
-    		if (this.wait) {
-    			const waitFor = new Subject<void>();
-    			this.waitSubjects.unshift(waitFor);
-    			await waitFor.pipe(take(1)).toPromise();
-    		}
-
-    		await this.execute(a, [...executionOrder, i]);
-    		if (i + 1 === actions.length) {
-    			lastSubject.next();
-    		}
-    	});
-    	if (this.wait && actions.length > 0) {
-    		await lastSubject.pipe(take(1)).toPromise();
-    	}
+    async execute(action: () => Promise<(() => any)[]>) {
+		const actions = (await action()) || [];
+		const executables = actions.map((a, i) =>
+			(async () => await this.execute(a))
+		);
+		await executables.reduce(async (p, fn) => { await p; return fn() }, Promise.resolve())
     }
 
     makeLength(value: string, length: number, signed?: boolean) {
@@ -209,8 +203,8 @@ export class Arcadable {
     				break;
 				}
 				case ValueType.listValue: {
-					tempBinaryString += this.makeLength((this.values[Number(k)] as ListValue<Value, number | number[]>).listValue.ID.toString(2), 16);
-					tempBinaryString += this.makeLength((this.values[Number(k)] as ListValue<Value, number | number[]>).listIndex.ID.toString(2), 16);
+					tempBinaryString += this.makeLength((this.values[Number(k)] as ListValue<ValueArrayValueType, number | number[]>).listValue.ID.toString(2), 16);
+					tempBinaryString += this.makeLength((this.values[Number(k)] as ListValue<ValueArrayValueType, number | number[]>).listIndex.ID.toString(2), 16);
     				break;
     			}
     			case ValueType.number: {
@@ -331,7 +325,11 @@ export class Arcadable {
 					}
 					case InstructionType.RunCondition: {
 						tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).evaluationValue.ID.toString(2), 16);
-						tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).failSet.ID.toString(2), 16);
+						if((this.instructions[Number(k)] as RunConditionInstruction).failSet) {
+							tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).failSet.ID.toString(2), 16);
+						} else {
+							tempBinaryString += '1111111111111111';
+						}
 						tempBinaryString += this.makeLength((this.instructions[Number(k)] as RunConditionInstruction).successSet.ID.toString(2), 16);
 						break;
 					}
@@ -350,13 +348,13 @@ export class Arcadable {
     	binaryString += tempBinaryString;
     	tempBinaryString = '';
 
-    	const rootSet = this.instructionSets[this.rootInstructionSet];
-    	tempBinaryString += this.makeLength(rootSet.ID.toString(2), 16);
-    	tempBinaryString += this.makeLength(rootSet.size.toString(2), 16);
-    	rootSet.instructions.forEach(i => {
+    	const mainSet = this.instructionSets[this.mainInstructionSet];
+    	tempBinaryString += this.makeLength(mainSet.ID.toString(2), 16);
+    	tempBinaryString += this.makeLength(mainSet.size.toString(2), 16);
+    	mainSet.instructions.forEach(i => {
     		tempBinaryString += this.makeLength(i.ID.toString(2), 16);
     	});
-    	Object.keys(this.instructionSets).filter(k => +k !== this.rootInstructionSet).forEach(k => {
+    	Object.keys(this.instructionSets).filter(k => +k !== this.mainInstructionSet).forEach(k => {
     		tempBinaryString += this.makeLength(this.instructionSets[Number(k)].ID.toString(2), 16);
     		tempBinaryString += this.makeLength(this.instructionSets[Number(k)].size.toString(2), 16);
     		this.instructionSets[Number(k)].instructions.forEach(i => {

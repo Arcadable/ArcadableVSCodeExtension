@@ -4,38 +4,22 @@ import { Arcadable } from '../arcadable';
 
 export class DebugLogInstruction extends Instruction {
 
-    private _LOG_VALUE!: ValuePointer<Value>;
-    set logValue(value:ValuePointer<Value>) {
-        this._LOG_VALUE = value;
-        this.called = true;
-    }
-    get logValue(): ValuePointer<Value> {
-        return this._LOG_VALUE;
-    }
-
     constructor(
         ID: number,
-        logValue: ValuePointer<Value>,
+        public logValue: ValuePointer<Value>,
         name: string,
         game: Arcadable
     ) {
         super(ID, InstructionType.DebugLog, name, game);
-        this.logValue = logValue;
 
     }
 
 
-    execute(executionOrder: number[]): ((executionOrder: number[]) => any)[] {
-        this.called = true;
-        this.executionOrder = executionOrder;
+    execute(): (() => Promise<any>)[] {
 
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
+        return [async () => {
+            const logValue = await this.logValue.getValue();
 
-		const logValue = this.logValue.getValue(executionOrder);
-
-        return [(e: number[]) => { 
 			this.game.instructionEmitter.next({
 				command: 'log',
 				value: logValue

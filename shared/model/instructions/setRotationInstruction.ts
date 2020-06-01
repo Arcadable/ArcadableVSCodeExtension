@@ -1,39 +1,23 @@
 import { Arcadable } from '../arcadable';
-import { NumberValueType, NumberValueTypePointer } from '../values/NumberValueType';
+import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 import { Instruction, InstructionType } from './instruction';
 
 export class SetRotationInstruction extends Instruction {
 
-    private _ROTATION_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set rotationValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._ROTATION_VALUE = value;
-        this.called = true;
-    }
-    get rotationValue(): NumberValueTypePointer<NumberValueType> {
-        return this._ROTATION_VALUE;
-    }
-
     constructor(
         ID: number,
-        rotationValue: NumberValueTypePointer<NumberValueType>,
+        public rotationValue: NumberValueTypePointer<NumberValueType>,
         name: string,
         game: Arcadable
     ) {
         super(ID, InstructionType.SetRotation, name, game);
-        this.rotationValue = rotationValue;
     }
 
 
-    execute(executionOrder: number[]): ((executionOrder: number[]) => any)[] {
-        this.called = true;
-        this.executionOrder = executionOrder;
+    execute(): (() => Promise<any>)[] {
+        return [async () => {
+            const rotation = await this.rotationValue.getValue();
 
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
-        const rotation = this.rotationValue.getValue(executionOrder);
-
-        return [ (e: number[]) => {
             this.game.instructionEmitter.next({
                 command: 'drawCircle',
                 rotation,

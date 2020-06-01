@@ -1,4 +1,4 @@
-import { NumberValueType, NumberValueTypePointer } from './NumberValueType';
+import { NumberValueType, NumberValueTypePointer } from './_numberValueType';
 import { ValueType } from './value';
 import { Arcadable } from '../arcadable';
 
@@ -47,67 +47,26 @@ export const evaluationOperatorTypes = Object.keys(EvaluationOperator)
 
 export class EvaluationValue extends NumberValueType {
 
-    private _LEFT!: NumberValueTypePointer<NumberValueType>;
-    set left(value: NumberValueTypePointer<NumberValueType>) {
-        this._LEFT = value;
-        this.called = true;
-    }
-    get left(): NumberValueTypePointer<NumberValueType> {
-        return this._LEFT;
-    }
-
-    private _RIGHT!: NumberValueTypePointer<NumberValueType>;
-    set right(value: NumberValueTypePointer<NumberValueType>) {
-        this._RIGHT = value;
-        this.called = true;
-    }
-    get right(): NumberValueTypePointer<NumberValueType> {
-        return this._RIGHT;
-    }
-
-    private _EVALUATION_OPERATOR!: EvaluationOperator;
-    set evaluationOperator(value: EvaluationOperator) {
-        this._EVALUATION_OPERATOR = value;
-        this.called = true;
-    }
-    get evaluationOperator(): EvaluationOperator {
-        return this._EVALUATION_OPERATOR;
-    }
-
-    private _STATIC = true;
-    set isStatic(value: boolean) {
-        this._STATIC = value;
-        this.called = true;
-    }
-    get isStatic(): boolean {
-        return this._STATIC;
-    }
     _STATIC_RESULT: number | undefined;
 
     constructor(
       ID: number,
-      left: NumberValueTypePointer<NumberValueType>,
-      right: NumberValueTypePointer<NumberValueType>,
-      evaluationOperator: EvaluationOperator,
-      isStatic: boolean,
+      public left: NumberValueTypePointer<NumberValueType>,
+      public right: NumberValueTypePointer<NumberValueType>,
+      public evaluationOperator: EvaluationOperator,
+      public isStatic: boolean,
       name: string,
       game: Arcadable
     ) {
         super(ID, ValueType.evaluation, name, game);
-        this.left = left;
-        this.right = right;
-        this.evaluationOperator = evaluationOperator;
-        this.isStatic = isStatic;
     }
 
-    get(executionOrder: number[]): number {
-        this.called = true;
-        this.executionOrder = executionOrder;
+    async get(): Promise<number> {
         if (this.isStatic && this._STATIC_RESULT !== undefined) {
             return this._STATIC_RESULT;
         }
-        const left = this.left.getValue(executionOrder);
-        const right = this.right.getValue(executionOrder);
+        const left = await this.left.getValue();
+        const right = await this.right.getValue();
         let result;
 
         switch (this.evaluationOperator) {
@@ -173,17 +132,11 @@ export class EvaluationValue extends NumberValueType {
         return result;
     }
 
-    set(newValue: number, executionOrder: number[]) {
-        this.called = true;
-        this.executionOrder = executionOrder;
-
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
+    async set(newValue: number) {
     }
 
-    isTruthy(executionOrder: number[]) {
-        return this.get(executionOrder) !== 0;
+    async isTruthy() {
+        return await this.get() !== 0;
     }
 
     stringify() {

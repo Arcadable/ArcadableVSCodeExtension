@@ -1,67 +1,46 @@
-import { Value, ValuePointer, ValueType } from './value';
 import { Arcadable } from '../arcadable';
-import { ValueArrayValueType, ValueArrayValueTypePointer } from './valueArrayValueType';
-import { NumberValueTypePointer, NumberValueType } from './NumberValueType';
+import { NumberValueType, NumberValueTypePointer } from './_numberValueType';
+import { Value, ValueType } from './value';
+import { ValueArrayValueTypePointer, ValueArrayValueType } from './valueArrayValueType';
 
-export class ListValue<T1 extends Value, T2 = number | number[]> extends Value {
+export class ListValue<T1 extends ValueArrayValueType, T2 = number | number[]> extends Value {
 
-    private _LIST_VALUE!: ValueArrayValueTypePointer<T1>;
-    set listValue(value: ValueArrayValueTypePointer<T1>) {
-        this._LIST_VALUE = value;
-        this.called = true;
-    }
-    get listValue(): ValueArrayValueTypePointer<T1> {
-        return this._LIST_VALUE;
-    }
-
-    private _LIST_INDEX!: NumberValueTypePointer<NumberValueType>;
-    set listIndex(values: NumberValueTypePointer<NumberValueType>) {
-        this._LIST_INDEX = values;
-        this.called = true;
-    }
-    get listIndex(): NumberValueTypePointer<NumberValueType> {
-        return this._LIST_INDEX;
-    }
 
     constructor(
         ID: number,
-        listValue: ValueArrayValueTypePointer<T1>,
-        listIndex: NumberValueTypePointer<NumberValueType>,
+        public listValue: ValueArrayValueTypePointer<T1>,
+        public listIndex: NumberValueTypePointer<NumberValueType>,
         name: string,
         game: Arcadable
     ) {
         super(ID, ValueType.listDeclaration, name, game);
-        this.listValue = listValue;
-        this.listIndex = listIndex;
     }
 
-    get(executionOrder: number[]): T2 {
-        this.called = true;
-        this.executionOrder = executionOrder;
-
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
+    async get(): Promise<T2> {
+        const index = await this.listIndex.getValue();
+        if (index >= 0 && index < this.listValue.getObject().size)  {
+            const v = (await this.listValue.getValue())[index];
+            return await v.getValue();
+        } else {
+            this.game.stop({message: 'Index out of bounds! (index = ' + index + ', size = ' + this.listValue.getObject().size + ')', values: [this.listIndex.ID, this.listValue.ID], instructions: []});
+            return null as unknown as T2;
         }
-        const index = this.listIndex.getValue(executionOrder);
-        const listValue = this.listValue.getValue(executionOrder)[index];
-        return listValue.getValue(executionOrder);
     }
 
-    set(newValue: T2, executionOrder: number[]) {
-        this.called = true;
-        this.executionOrder = executionOrder;
-
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
+    async set(newValue: T2) {
+        const index = await this.listIndex.getValue();
+        if (index > 0 && index < this.listValue.getObject().size)  {
+            const v = (await this.listValue.getValue())[index];
+            return await v.getObject().set(newValue);
+        } else {
+            this.game.stop({message: 'Index out of bounds!', values: [this.listIndex.ID, this.listValue.ID], instructions: []});
+            return;
         }
-        const index = this.listIndex.getValue(executionOrder);
-        const listValue = this.listValue.getValue(executionOrder)[index];
-        return listValue.getObject(executionOrder).set(newValue, executionOrder);
     }
-    isTruthy(executionOrder: number[]) {
-        const index = this.listIndex.getValue(executionOrder);
-        const listValue = this.listValue.getValue(executionOrder)[index];
-        return listValue.getObject(executionOrder).isTruthy(executionOrder);
+    async isTruthy() {
+        const index = await this.listIndex.getValue();
+        const v = (await this.listValue.getValue())[index];
+        return await v.getObject().isTruthy();
     }
 
     stringify() {

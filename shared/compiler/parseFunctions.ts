@@ -163,7 +163,7 @@ export function ParseValueConfig(section: string, otherMatchWithType: RegExpMatc
 		value: null,
 		errors: []
 	};
-	const configMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Config( *)=( *)(ScreenHeight|ScreenWidth|TargetMillisPerFrame|CurrentMillis|IsZigZag)END_OF_SECTION$/g) as RegExpMatchArray;
+	const configMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Config( *)=( *)(ScreenHeight|ScreenWidth|TargetMainMillis|TargetRenderMillis|CurrentMillis|IsZigZag)END_OF_SECTION$/g) as RegExpMatchArray;
 	if (configMatch) {
 		const value = configMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
 		let configType = getSystemConfigType(value);
@@ -173,7 +173,7 @@ export function ParseValueConfig(section: string, otherMatchWithType: RegExpMatc
 			name
 		};
 	} else {
-		result.errors.push({ error: 'Unknown system config identifier (known identifiers: ScreenHeight, ScreenWidth, TargetMillisPerFrame, CurrentMillis, IsZigZag) or missing ";"', pos: otherMatchWithType[0].length });
+		result.errors.push({ error: 'Unknown system config identifier (known identifiers: ScreenHeight, ScreenWidth, TargetMainMillis, TargetRenderMillis, CurrentMillis, IsZigZag) or missing ";"', pos: otherMatchWithType[0].length });
 	}
 	return result;
 }
@@ -510,7 +510,7 @@ export function ParseValueListPixel(section: string, otherMatchWithType: RegExpM
 				};
 				result.push(subValue);
 				actualValues.push(subName);
-			} else {
+			} else if (v[0] && v[0].length > 0) {
 				actualValues.push(v[0]);
 			}
 		});
@@ -543,7 +543,7 @@ export function ParseValueListConfig(section: string, otherMatchWithType: RegExp
 		const values = value.replace('[', '').replace(']', '').replace(/\s/g, '').split(',');
 		const actualValues: string[] = [];
 		values.forEach((v, i) => {
-			const configMatch = v.match(/ScreenHeight|ScreenWidth|TargetMillisPerFrame|CurrentMillis|IsZigZag/g);
+			const configMatch = v.match(/ScreenHeight|ScreenWidth|TargetMainMillis|TargetRenderMillis|CurrentMillis|IsZigZag/g);
 			if(configMatch) {
 				const subName = name + '-sub' + i;
 				let configType = getSystemConfigType(v);
@@ -731,19 +731,19 @@ export interface FunctionParseResult {
     errors: {error: string, pos: number, line: number}[]
 }
 
-export function ParseFunction(section: string, otherMatchWithType: RegExpMatchArray, lineNumber: number, lines: string[]): {functions: FunctionParseResult[], errors: {error: string, pos: number, line: number}[], parsedCount: number} {
+export function GetParseFunctionExecutable(section: string, otherMatchWithType: RegExpMatchArray, lineNumber: number, lines: string[]): {functionParseExecutable: () => FunctionParseResult[], errors: {error: string, pos: number, line: number}[], parsedCount: number} {
 	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
 	const name = values[0];
 	const line = lines[lineNumber];
 	const codeLine = line.split(/\/\//g)[0];
-	const result: {functions: FunctionParseResult[], errors: {error: string, pos: number, line: number}[], parsedCount: number} = {
-		functions: [],
+	const result: {functionParseExecutable: () => FunctionParseResult[], errors: {error: string, pos: number, line: number}[], parsedCount: number} = {
+		functionParseExecutable: () => [],
 		errors: [],
 		parsedCount: 0
 	};
 	const functionStartMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Function( *){( *)END_OF_SECTION$/g) as RegExpMatchArray;
 	if (functionStartMatch) {
-		let functionLines = [];
+		let functionLines: string[] = [];
 		let functionLineNumber = lineNumber;
 		let functionCodeLine = codeLine.trim();
 		let level = 1;
@@ -773,7 +773,7 @@ export function ParseFunction(section: string, otherMatchWithType: RegExpMatchAr
 			}
 		}
 
-		result.functions = parseInstructionSet(lineNumber, functionLines, name);
+		result.functionParseExecutable = () => parseInstructionSet(lineNumber, functionLines, name);
 		result.parsedCount += parsedLinesCount;
 	} else {
 		result.errors.push({ error: 'Incorrect function format', pos: otherMatchWithType[0].length, line: lineNumber + 1 });
@@ -1017,7 +1017,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					const valueSplit = evalMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split(/=(.+)/g);
 					const value = valueSplit[1];
 					const valueName = valueSplit[0];
-					const evaluation = (value.match(/(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)/g) as RegExpMatchArray)[0];
+					const evaluation = (value.match(/(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>=|<=|>|<)/g) as RegExpMatchArray)[0];
 					const values = value.split(evaluation);
 					let evaluationType = getEvaluationOperator(evaluation);
 					const evaluationValueName = valueName + '-' + name + '-' + (instructionSetStartLine + lineNumber + 2) + '-' + (position + totalPosition + mutateMatch[0].length);
@@ -1103,7 +1103,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					conditionEvaluationName = conditionValueMatch[0].replace(/\s/g, '').replace('if(', '').replace('){END_OF_SECTION', '');
 				} else if (conditionEvalMatch) {
 					const value = conditionEvalMatch[0].replace(/\s/g, '').replace('if(', '').replace('){END_OF_SECTION', '');
-					const evaluation = (value.match(/(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)/g) as RegExpMatchArray)[0];
+					const evaluation = (value.match(/(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>=|<=|>|<)/g) as RegExpMatchArray)[0];
 					const values = value.split(evaluation);
 					let evaluationType = getEvaluationOperator(evaluation);
 					conditionEvaluationName = name + '-' + (instructionSetStartLine + lineNumber + 2) + '-' + (position + totalPosition + conditionMatch[0].length);
@@ -1222,7 +1222,6 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 						resultList.push(...conditionFailedInstructions);
 
 					}
-					parsedLinesCount++;
 				}
 
 				result.instructions.push({
@@ -1276,7 +1275,8 @@ function getSystemConfigType(value: string): SystemConfigType {
 	switch (value) {
 		case 'ScreenHeight': return SystemConfigType.screenHeight;
 		case 'ScreenWidth': return SystemConfigType.screenWidth;
-		case 'TargetMillisPerFrame': return SystemConfigType.targetMillisPerFrame;
+		case 'TargetMainMillis': return SystemConfigType.targetMainMillis;
+		case 'TargetRenderMillis': return SystemConfigType.targetRenderMillis;
 		case 'CurrentMillis': return SystemConfigType.currentMillis;
 		case 'IsZigZag': return SystemConfigType.isZigZag;
 	}

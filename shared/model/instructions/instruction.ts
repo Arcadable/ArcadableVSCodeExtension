@@ -52,33 +52,23 @@ export const instructionTypes = Object.keys(InstructionType)
 			case InstructionType.RunSet:
 				return { viewValue: 'Run instructionset', codeValue: 'execute();', value: Number(value) };
 			case InstructionType.DebugLog:
-				return { viewValue: 'Log value', codeValue: 'debug.log(value);'}
+				return { viewValue: 'Log value', codeValue: 'debug.log(value);', value: Number(value) }
 			default:
 				return { viewValue: '', value: 0};
 		}
 	});
 export abstract class Instruction extends LogicElement {
 
-    private _INSTRUCTION_TYPE: InstructionType = 0;
-    set instructionType(value: InstructionType) {
-    	this._INSTRUCTION_TYPE = value;
-    	this.called = true;
-    }
-    get instructionType(): InstructionType {
-    	return this._INSTRUCTION_TYPE;
-    }
-
     constructor(
     	ID: number,
-    	instructionType: InstructionType,
+    	public instructionType: InstructionType,
     	name: string,
     	game: Arcadable
     ) {
     	super(ID, name, game);
-    	this.instructionType = instructionType;
     }
 
-    abstract execute(executionOrder: number[]): ((executionOrder: number[]) => any)[];
+    abstract execute(): (() => Promise<any>)[];
 
     stringify() {
     	return JSON.stringify({
@@ -95,7 +85,7 @@ export class InstructionPointer {
     	this.ID = ID;
     	this.game = game;
     }
-    execute(executionOrder: number[]) {
-    	return this.game.instructions[this.ID].execute(executionOrder);
+    execute(): (() => Promise<any>)[] {
+    	return this.game.instructions[this.ID].execute();
     }
 }

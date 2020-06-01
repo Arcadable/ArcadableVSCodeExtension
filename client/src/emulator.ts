@@ -8,6 +8,8 @@ import { ArcadableCompiler, CompileResult } from './compiler';
 export class Emulator {
 	getPixelCallback: (color: number) => {};
 	instructionSubscription: Subscription;
+	interruptionSubscription: Subscription;
+
 	compileResult: CompileResult;
 	exportPath: string;
 	constructor(public log: vscode.OutputChannel) {
@@ -66,6 +68,7 @@ export class Emulator {
 			() => {
 				currentPanel = undefined;
 				this.instructionSubscription.unsubscribe();
+				this.interruptionSubscription.unsubscribe();
 			},
 			null,
 			context.subscriptions
@@ -82,6 +85,9 @@ export class Emulator {
 				if(this.compileResult) {
 					if(this.instructionSubscription) {
 						this.instructionSubscription.unsubscribe();
+					}
+					if(this.interruptionSubscription) {
+						this.interruptionSubscription.unsubscribe();
 					}
 					this.compileResult.game.stop();
 				}
@@ -154,6 +160,33 @@ export class Emulator {
 					(currentPanel as vscode.WebviewPanel).webview.postMessage(instruction);
 				}
 			});
+			this.interruptionSubscription = game.interruptedEmitter.subscribe((interruption: {
+				message: string,
+				values: number[],
+				instructions: number[]
+			}) => {
+				this.instructionSubscription.unsubscribe();
+				this.interruptionSubscription.unsubscribe();
+
+				this.log.appendLine('Program interrupted.');
+				this.log.appendLine(interruption.message);
+				if (interruption.values.length > 0) {
+					this.log.appendLine('Values that could be involved with the interruption:');
+					interruption.values.forEach(v => {
+						compileResult.parsedProgram.compressedValues[v].linked.forEach(linked => {
+							this.log.appendLine(linked.file.replace(vscode.workspace.rootPath, '') + ':' + linked.line + ':' + linked.pos + ':' + linked.name);
+						});
+					});
+				}
+				if (interruption.instructions.length > 0) {
+					this.log.appendLine('Instructions that could be involved with the interruption:');
+					interruption.instructions.forEach(v => {
+						compileResult.parsedProgram.compressedInstructions[v].linked.forEach(linked => {
+							this.log.appendLine(linked.file.replace(vscode.workspace.rootPath, '') + ':' + linked.line + ':' + linked.pos);
+						});
+					});
+				}
+			});
 	
 			(currentPanel as vscode.WebviewPanel).webview.postMessage({
 				command: 'setDimensions',
@@ -177,7 +210,8 @@ export class Emulator {
 			system: {
 				screenWidth: number,
 				screenHeight: number,
-				targetFramerate: number,
+				mainsPerSecond: number,
+				rendersPerSecond: number,
 				digitalInputAmount: number,
 				analogInputAmount: number
 			}
@@ -194,7 +228,6 @@ export class Emulator {
 			return undefined;
 		}
 		this.exportPath = (config as any).project.export;
-		console.log(config);
 		const mainUri = (await vscode.workspace.findFiles((config as any).project.main))[0];
 		const mainDoc = await vscode.workspace.openTextDocument(mainUri);
 	
@@ -222,12 +255,14 @@ export class Emulator {
 		const conf = new SystemConfig(
 			config.system.screenWidth,
 			config.system.screenHeight,
-			Math.floor(1000 / config.system.targetFramerate),
+			Math.floor(1000 / config.system.mainsPerSecond),
+			Math.floor(1000 / config.system.rendersPerSecond),
 			false,
 			config.system.digitalInputAmount,
 			config.system.analogInputAmount,
 			0
 		);
+
 		const compileResult = new ArcadableCompiler(conf, docs).startCompile();
 	
 		return compileResult;
@@ -261,8 +296,11 @@ export class Emulator {
 			if (!config.system.screenHeight) {
 				result += '"system.screenHeight", ';
 			}
-			if (!config.system.targetFramerate) {
-				result += '"system.targetFramerate", ';
+			if (!config.system.mainsPerSecond) {
+				result += '"system.mainsPerSecond", ';
+			}
+			if (!config.system.rendersPerSecond) {
+				result += '"system.rendersPerSecond", ';
 			}
 			if (!config.system.digitalInputAmount) {
 				result += '"system.digitalInputAmount", ';
@@ -296,17 +334,24 @@ export class Emulator {
 			)
 		).toString();
 
-		const scriptSrcUrl = currentPanel.webview.asWebviewUri(
+		const mainScriptSrcUrl = currentPanel.webview.asWebviewUri(
 			vscode.Uri.file(
 				path.join(context.extensionPath, 'client', 'src', 'js', 'main.js')
 			)
 		).toString();
 
+		const drawFunctionsScriptSrcUrl = currentPanel.webview.asWebviewUri(
+			vscode.Uri.file(
+				path.join(context.extensionPath, 'client', 'src', 'js', 'drawFunctions.js')
+			)
+		).toString();
+
 		currentPanel.webview.html = fs.readFileSync(templateFilePath.fsPath, 'utf8')
 			.replace('{{styleSrc}}', styleSrcUrl)
-			.replace('{{scriptSrc}}', scriptSrcUrl);
+			.replace('{{mainScriptSrc}}', mainScriptSrcUrl)
+			.replace('{{functionScriptSrc}}', drawFunctionsScriptSrcUrl);
 
-
+		
 		return currentPanel;
 	}
 	

@@ -1,76 +1,37 @@
 import { Arcadable } from '../arcadable';
-import { NumberValueType, NumberValueTypePointer } from '../values/NumberValueType';
+import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 import { Instruction, InstructionType } from './instruction';
 
 export class FillCircleInstruction extends Instruction {
 
-    private _COLOR_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set colorValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._COLOR_VALUE = value;
-        this.called = true;
-    }
-    get colorValue(): NumberValueTypePointer<NumberValueType> {
-        return this._COLOR_VALUE;
-    }
-
-    private _RADIUS_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set radiusValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._RADIUS_VALUE = value;
-        this.called = true;
-    }
-    get radiusValue(): NumberValueTypePointer<NumberValueType> {
-        return this._RADIUS_VALUE;
-    }
-
-    private _X_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set xValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._X_VALUE = value;
-        this.called = true;
-    }
-    get xValue(): NumberValueTypePointer<NumberValueType> {
-        return this._X_VALUE;
-    }
-
-    private _Y_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set yValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._Y_VALUE = value;
-        this.called = true;
-    }
-    get yValue(): NumberValueTypePointer<NumberValueType> {
-        return this._Y_VALUE;
-    }
-
 
     constructor(
         ID: number,
-        colorValue: NumberValueTypePointer<NumberValueType>,
-        radiusValue: NumberValueTypePointer<NumberValueType>,
-        xValue: NumberValueTypePointer<NumberValueType>,
-        yValue: NumberValueTypePointer<NumberValueType>,
+        public colorValue: NumberValueTypePointer<NumberValueType>,
+        public radiusValue: NumberValueTypePointer<NumberValueType>,
+        public xValue: NumberValueTypePointer<NumberValueType>,
+        public yValue: NumberValueTypePointer<NumberValueType>,
         name: string,
         game: Arcadable
     ) {
         super(ID, InstructionType.FillCircle, name, game);
-        this.colorValue = colorValue;
-        this.radiusValue = radiusValue;
-        this.xValue = xValue;
-        this.yValue = yValue;
     }
 
 
-    execute(executionOrder: number[]): ((executionOrder: number[]) => any)[] {
-        this.called = true;
-        this.executionOrder = executionOrder;
+    execute(): (() => Promise<any>)[] {
+        return [async () => {
+            const [
+                color,
+                radius,
+                centerX,
+                centerY
+            ] = await Promise.all([
+                this.colorValue.getValue(),
+                this.radiusValue.getValue(),
+                this.xValue.getValue(),
+                this.yValue.getValue()
+            ]);
 
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
-        const color = this.colorValue.getValue(executionOrder);
-        const radius = this.radiusValue.getValue(executionOrder);
-        const centerX = this.xValue.getValue(executionOrder);
-        const centerY = this.yValue.getValue(executionOrder);
-
-        return [ (e: number[]) => {
             this.game.instructionEmitter.next({
                 command: 'fillCircle',
                 color,

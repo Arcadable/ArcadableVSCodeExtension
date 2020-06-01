@@ -12,15 +12,9 @@ export class ClearInstruction extends Instruction {
     }
 
 
-    execute(executionOrder: number[]): ((executionOrder: number[]) => any)[] {
-        this.called = true;
-        this.executionOrder = executionOrder;
+    execute(): (() => Promise<any>)[] {
 
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
-
-        return [ (e: number[]) => {
+        return [async () => {
             this.game.instructionEmitter.next({
                 command: 'clear'
             });

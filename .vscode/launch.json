@@ -20,7 +20,9 @@
 			"name": "Attach to Server",
 			"port": 6009,
 			"restart": true,
-			"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
+			"outFiles": ["${workspaceRoot}/server/out/**/*.js"],
+			"smartStep": true,
+			"skipFiles": ["<node_internals>/**"],
 		}
 	],
 	"compounds": [

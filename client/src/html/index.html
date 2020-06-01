@@ -13,9 +13,15 @@
     <div class="simulationContainer">
         <canvas id="canvasEl"></canvas>
         <canvas id="textCanvasEl" class="hiddenCanvas"></canvas>
-        <button onclick="exportByteCode()">Export game</button>
+        
+        <div class="controlsContainer">
+            <button class="export" onclick="exportByteCode()">Export game</button>
+            <div id="digitalInputContainer"></div>
+            <div id="analogInputContainer"></div>
+        </div>
     </div>
-    <script src="{{scriptSrc}}"></script>
+    <script src="{{functionScriptSrc}}"></script>
+    <script src="{{mainScriptSrc}}"></script>
 </body>
 
 </html>

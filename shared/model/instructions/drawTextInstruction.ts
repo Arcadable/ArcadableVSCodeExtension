@@ -1,93 +1,45 @@
 import { Arcadable } from '../arcadable';
-import { NumberArrayValueTypePointer } from '../values/numberArrayValueType';
-import { NumberValueType, NumberValueTypePointer } from '../values/NumberValueType';
+import { NumberArrayValueTypePointer } from '../values/_numberArrayValueType';
+import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 import { TextValue } from '../values/textValue';
 import { Instruction, InstructionType } from './instruction';
 
 export class DrawTextInstruction extends Instruction {
 
-    private _COLOR_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set colorValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._COLOR_VALUE = value;
-        this.called = true;
-    }
-    get colorValue(): NumberValueTypePointer<NumberValueType> {
-        return this._COLOR_VALUE;
-    }
-
-    private _SCALE_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set scaleValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._SCALE_VALUE = value;
-        this.called = true;
-    }
-    get scaleValue(): NumberValueTypePointer<NumberValueType> {
-        return this._SCALE_VALUE;
-    }
-
-
-    private _TEXT_VALUE!: NumberArrayValueTypePointer<TextValue>;
-    set textValue(value: NumberArrayValueTypePointer<TextValue>) {
-        this._TEXT_VALUE = value;
-        this.called = true;
-    }
-    get textValue(): NumberArrayValueTypePointer<TextValue> {
-        return this._TEXT_VALUE;
-    }
-
-    private _X_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set xValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._X_VALUE = value;
-        this.called = true;
-    }
-    get xValue(): NumberValueTypePointer<NumberValueType> {
-        return this._X_VALUE;
-    }
-
-    private _Y_VALUE!: NumberValueTypePointer<NumberValueType>;
-    set yValue(value: NumberValueTypePointer<NumberValueType>) {
-        this._Y_VALUE = value;
-        this.called = true;
-    }
-    get yValue(): NumberValueTypePointer<NumberValueType> {
-        return this._Y_VALUE;
-    }
-
-
     constructor(
         ID: number,
-        colorValue: NumberValueTypePointer<NumberValueType>,
-        scaleValue: NumberValueTypePointer<NumberValueType>,
-        textValue: NumberArrayValueTypePointer<TextValue>,
-        xValue: NumberValueTypePointer<NumberValueType>,
-        yValue: NumberValueTypePointer<NumberValueType>,
+        public colorValue: NumberValueTypePointer<NumberValueType>,
+        public scaleValue: NumberValueTypePointer<NumberValueType>,
+        public textValue: NumberArrayValueTypePointer<TextValue>,
+        public xValue: NumberValueTypePointer<NumberValueType>,
+        public yValue: NumberValueTypePointer<NumberValueType>,
         name: string,
         game: Arcadable
     ) {
         super(ID, InstructionType.DrawText, name, game);
-        this.colorValue = colorValue;
-        this.scaleValue = scaleValue;
-        this.textValue = textValue;
-        this.xValue = xValue;
-        this.yValue = yValue;
     }
 
 
-    execute(executionOrder: number[]): ((executionOrder: number[]) => any)[] {
-        this.called = true;
-        this.executionOrder = executionOrder;
+    execute(): (() => Promise<any>)[] {
 
-        if (this.breakSet) {
-            this.game.breakEncountered.next();
-        }
+        return [async () => {
+            let [
+                pixelTextX,
+                pixelTextY,
+                scale,
+                textColor,
+                text,
+            ] = await Promise.all([
+                this.xValue.getValue(),
+                this.yValue.getValue(),
+                this.scaleValue.getValue(),
+                this.colorValue.getValue(),
+                this.textValue.getValue()
+            ]);
+    
+            text = text.reduce((acc: string, curr: number) => acc + String.fromCharCode(curr), '');
+            pixelTextY += scale * 8;
 
-        const pixelTextX = this.xValue.getValue(executionOrder);
-        let pixelTextY = this.yValue.getValue(executionOrder);
-        const scale = this.scaleValue.getValue(executionOrder);
-        pixelTextY += scale * 8;
-        const textColor = this.colorValue.getValue(executionOrder);
-        const text = this.textValue.getValue(executionOrder).reduce((acc, curr) => acc + String.fromCharCode(curr), '');
-
-        return [ (e: number[]) => {
             this.game.instructionEmitter.next({
                 command: 'drawText',
                 pixelTextX,
