@@ -1,8 +1,9 @@
 import { Arcadable } from '../arcadable';
-import { NumberArrayValueTypePointer } from '../values/_numberArrayValueType';
 import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 import { TextValue } from '../values/textValue';
 import { Instruction, InstructionType } from './instruction';
+import { ValueArrayValueTypePointer } from '../values/valueArrayValueType';
+import { ValuePointer, Value } from '../values/value';
 
 export class DrawTextInstruction extends Instruction {
 
@@ -10,7 +11,7 @@ export class DrawTextInstruction extends Instruction {
         ID: number,
         public colorValue: NumberValueTypePointer<NumberValueType>,
         public scaleValue: NumberValueTypePointer<NumberValueType>,
-        public textValue: NumberArrayValueTypePointer<TextValue>,
+        public textValue: ValueArrayValueTypePointer<TextValue<NumberValueType>>,
         public xValue: NumberValueTypePointer<NumberValueType>,
         public yValue: NumberValueTypePointer<NumberValueType>,
         name: string,
@@ -36,17 +37,17 @@ export class DrawTextInstruction extends Instruction {
                 this.colorValue.getValue(),
                 this.textValue.getValue()
             ]);
-    
-            text = text.reduce((acc: string, curr: number) => acc + String.fromCharCode(curr), '');
+            const textvalue = await (text as ValuePointer<NumberValueType>[]).reduce(async (acc, curr) => {
+                return (await acc) + String.fromCharCode(await curr.getValue());
+            }, new Promise<string>(res => res('')));
             pixelTextY += scale * 8;
-
             this.game.instructionEmitter.next({
                 command: 'drawText',
                 pixelTextX,
                 pixelTextY,
                 scale,
                 textColor,
-                text,
+                textvalue,
             });
         }];
     }

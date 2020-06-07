@@ -1012,6 +1012,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 			} else if (mutateMatch) {
 				const evalMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))END_OF_SECTION$/g) as RegExpMatchArray;
 				const numberMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))END_OF_SECTION$/g) as RegExpMatchArray;
+				const valueMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))END_OF_SECTION$/g) as RegExpMatchArray;
 
 				if (evalMatch) {
 					const valueSplit = evalMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split(/=(.+)/g);
@@ -1085,6 +1086,17 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					result.instructions.push({
 						type: InstructionType.MutateValue,
 						params: [valueName, numberValueName],
+						line: instructionSetStartLine + lineNumber + 2,
+						pos: position + totalPosition,
+					});
+				} else if (valueMatch) {
+					const valueSplit = valueMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split(/=(.+)/g);
+					const value = valueSplit[1];
+					const valueName = valueSplit[0];
+
+					result.instructions.push({
+						type: InstructionType.MutateValue,
+						params: [valueName, value],
 						line: instructionSetStartLine + lineNumber + 2,
 						pos: position + totalPosition,
 					});

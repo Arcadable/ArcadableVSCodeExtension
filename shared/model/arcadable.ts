@@ -27,6 +27,7 @@ import { TextValue } from './values/textValue';
 import { SetRotationInstruction } from './instructions/setRotationInstruction';
 import { RunSetInstruction } from './instructions/runSetInstruction';
 import { ValueArrayValueType } from './values/valueArrayValueType';
+import { NumberValueType } from './values/_numberValueType';
 
 const fp = require('ieee-float');
 
@@ -89,9 +90,9 @@ export class Arcadable {
 		this.interruptedEmitter.next(error);
     }
 	startRender() {
-		const timerSubscr = timer(0, this.systemConfig.targetRenderMillis).subscribe(() => {
+		const timerSubscr = timer(0, this.systemConfig.targetRenderMillis).subscribe(async () => {
 			try {
-				this.doRenderStep();
+				await this.doRenderStep();
 			} catch (e) {
 				this.instructionEmitter.next({message: 'An unexpected error occured.'});
 			}
@@ -103,9 +104,9 @@ export class Arcadable {
 	}
 
 	startMain() {
-		const timerSubscr = timer(0, this.systemConfig.targetMainMillis).subscribe(() => {
+		const timerSubscr = timer(0, this.systemConfig.targetMainMillis).subscribe(async () => {
 			try {
-				this.doMainStep();
+				await this.doMainStep();
 			} catch (e) {
 				this.instructionEmitter.next({message: 'An unexpected error occured.'});
 			}
@@ -226,9 +227,9 @@ export class Arcadable {
     				break;
     			}
     			case ValueType.text: {
-    				tempBinaryString += this.makeLength((this.values[Number(k)] as TextValue).size.toString(2), 8);
-    				(this.values[Number(k)] as TextValue).value.forEach(v => {
-    					tempBinaryString += this.makeLength(v.toString(2), 8);
+    				tempBinaryString += this.makeLength((this.values[Number(k)] as TextValue<NumberValueType>).size.toString(2), 8);
+					(this.values[Number(k)]as TextValue<NumberValueType>).values.forEach(v => {
+    					tempBinaryString += this.makeLength(v.ID.toString(2), 16);
     				});
     				break;
     			}

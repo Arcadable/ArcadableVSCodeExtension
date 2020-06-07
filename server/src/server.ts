@@ -16,7 +16,7 @@ import {
 import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
-import { ArcadableParser, valueTypes, instructionTypes, ParsedFile } from 'arcadable-shared/';
+import { ArcadableParser, valueTypes, instructionTypes, ParsedFile, FunctionParseResult, ValueParseResult } from 'arcadable-shared/';
 
 let connection = createConnection(ProposedFeatures.all);
 
@@ -78,8 +78,36 @@ documents.onDidChangeContent(change => {
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 
 	let diagnostics: Diagnostic[] = [];
-	const parseResult = new ArcadableParser().parse(textDocument.uri, textDocument.getText().split(/\n/g));
-	parseResult.errors.forEach(e => {
+	const data = new ArcadableParser().parse(textDocument.uri, textDocument.getText().split(/\n/g));
+
+
+	const functionParseResultExecutables = {
+		file: data.filePath,
+		executables: data.functionParseResults
+	};
+
+
+	functionParseResultExecutables.executables.forEach(executable => {
+
+		const functions = executable();
+
+		data.errors.push(
+			...functions
+				.reduce((acc, curr) => [...acc, ...curr.errors.map(err => ({
+					file: functionParseResultExecutables.file,
+					line: err.line,
+					pos: err.pos,
+					error: err.error
+				}))], [] as {
+				file: string;
+				line: number;
+				pos: number;
+				error: string;
+			}[])
+		);
+	});
+
+	data.errors.forEach(e => {
 
 		let diagnostic: Diagnostic = {
 			severity: DiagnosticSeverity.Error,

@@ -29,7 +29,7 @@ export class ListValue<T1 extends ValueArrayValueType, T2 = number | number[]> e
 
     async set(newValue: T2) {
         const index = await this.listIndex.getValue();
-        if (index > 0 && index < this.listValue.getObject().size)  {
+        if (index >= 0 && index < this.listValue.getObject().size)  {
             const v = (await this.listValue.getValue())[index];
             return await v.getObject().set(newValue);
         } else {

@@ -12,6 +12,56 @@ function exportByteCode() {
         command: 'export'
     })
 }
+function clearInputs() {
+   document.getElementById('digitalInputContainer').innerHTML = '';
+   document.getElementById('analogInputContainer').innerHTML = '';
+}
+function addDigitalInput(id) {
+    var input = document.createElement("INPUT");
+    var label = document.createElement("LABEL");
+    input.setAttribute('type', 'checkbox');
+    input.setAttribute('id', 'digital' + id);
+    input.setAttribute('name', 'digital' + id);
+    label.setAttribute('for', 'digital' + id);
+    label.innerText = 'Digital #' + id;
+    var container = document.createElement("DIV");
+    container.appendChild(input);
+    container.appendChild(label);
+    document.getElementById('digitalInputContainer').appendChild(container);
+
+    input.onclick = (event) => {
+        vscode.postMessage({
+            command: 'digitalChanged',
+            index: id,
+            value: input.checked
+        })
+    };
+}
+function addAnalogInput(id) {
+    var input = document.createElement("INPUT");
+    var label = document.createElement("LABEL");
+    input.setAttribute('type', 'range');
+    input.setAttribute('id', 'analog' + id);
+    input.setAttribute('name', 'analog' + id);
+    input.setAttribute('min', 0);
+    input.setAttribute('max', 1023);
+    input.setAttribute('value', 512);
+
+    label.setAttribute('for', 'analog' + id);
+    label.innerText = 'Analog #' + id;
+    var container = document.createElement("DIV");
+    container.appendChild(input);
+    container.appendChild(label);
+    document.getElementById('analogInputContainer').appendChild(container);
+
+    input.oninput = (event) => {
+        vscode.postMessage({
+            command: 'analogChanged',
+            index: id,
+            value: input.value
+        })
+    };
+}
 
 renderInstructions = [];
 
@@ -23,6 +73,16 @@ window.addEventListener('message', event => {
                 r();
             });
             renderInstructions = [];
+            break;
+        }
+        case 'setInputs': {
+            clearInputs();
+            for(let i = 0; i < message.digitalInputs; i++) {
+                addDigitalInput(i);
+            }
+            for(let i = 0; i < message.analogInputs; i++) {
+                addAnalogInput(i);
+            }
             break;
         }
         case 'setDimensions':
@@ -82,7 +142,7 @@ window.addEventListener('message', event => {
             break;
         case 'drawText':
             renderInstructions.push(() => {
-                drawText(canvasContext, tempCanvasContext, message.textColor, message.text, message.scale, message.pixelTextX, message.pixelTextY);
+                drawText(canvasContext, tempCanvasContext, message.textColor, message.textvalue, message.scale, message.pixelTextX, message.pixelTextY);
             });
             break;
         case 'drawTriangle':

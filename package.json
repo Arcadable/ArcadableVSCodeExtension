@@ -2,16 +2,19 @@
 	"name": "arcadable-emulator",
 	"description": "Arcadable Emulator",
 	"publisher": "Arcadable",
-	"repository": { "type": "git", "url": "https://github.com/Arcadable/ArcadableVSCodeExtension.git" },
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Arcadable/ArcadableVSCodeExtension.git"
+	},
 	"license": "MIT",
 	"version": "1.0.2",
-	"icon": "./ArcadableIconx128.png",
+	"icon": "ArcadableIconx128.png",
 	"categories": [],
 	"engines": {
 		"vscode": "^1.43.0"
 	},
 	"activationEvents": [
-		"onLanguage:plaintext",
+		"onLanguage:arcadable",
 		"onCommand:arcadable-emulator.start"
 	],
 	"main": "./client/out/extension",
@@ -38,6 +41,26 @@
 				"command": "arcadable-emulator.start",
 				"title": "Start a new Arcadable emulator",
 				"category": "Arcadable Emulator"
+			}
+		],
+		"languages": [
+			{
+				"id": "arcadable",
+				"extensions": [
+					".arc"
+				],
+				"aliases": [
+					"arc",
+					"Arcadable"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "arcadable",
+				"scopeName": "source.arcadable",
+				"path": "./syntaxes/arc.tmGrammar.json"
 			}
 		]
 	},

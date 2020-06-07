@@ -10,16 +10,23 @@
 </head>
 
 <body>
+    <div class="header">
+        <button class="export" onclick="exportByteCode()">Export game</button>
+    </div>
     <div class="simulationContainer">
-        <canvas id="canvasEl"></canvas>
-        <canvas id="textCanvasEl" class="hiddenCanvas"></canvas>
-        
-        <div class="controlsContainer">
-            <button class="export" onclick="exportByteCode()">Export game</button>
-            <div id="digitalInputContainer"></div>
-            <div id="analogInputContainer"></div>
+        <div>
+            <div class="canvasWrapper">
+                <canvas id="canvasEl"></canvas>
+            </div>
+            <canvas id="textCanvasEl" class="hiddenCanvas"></canvas>
+            
+            <div class="controlsContainer">
+                <div id="digitalInputContainer"></div>
+                <div id="analogInputContainer"></div>
+            </div>
         </div>
     </div>
+
     <script src="{{functionScriptSrc}}"></script>
     <script src="{{mainScriptSrc}}"></script>
 </body>

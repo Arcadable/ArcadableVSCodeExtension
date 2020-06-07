@@ -20,7 +20,6 @@ export * from '../model/instructions/runConditionInstruction';
 export * from '../model/instructions/runSetInstruction';
 export * from '../model/instructions/setRotationInstruction';
 export * from '../model/instructions/debugLogInstruction';
-export * from '../model/values/_numberArrayValueType';
 export * from '../model/values/_numberValueType';
 export * from '../model/values/analogInputValue';
 export * from '../model/values/digitalInputValue';

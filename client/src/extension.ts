@@ -10,7 +10,6 @@ import * as vscode from 'vscode';
 import { Emulator } from './emulator';
 
 let client: LanguageClient;
-
 export function activate(context: ExtensionContext) {
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
 	let emulator: Emulator;
@@ -34,7 +33,7 @@ export function activate(context: ExtensionContext) {
 	};
 
 	let clientOptions: LanguageClientOptions = {
-		documentSelector: [{ scheme: 'file', language: 'plaintext' }],
+		documentSelector: [{ scheme: 'file', language: 'arcadable' }],
 	};
 
 	client = new LanguageClient(
@@ -50,10 +49,13 @@ export function activate(context: ExtensionContext) {
 
 	emulator = new Emulator(arcLog);
 	let disposable = vscode.commands.registerCommand('arcadable-emulator.start', () => {
+
 		if (currentPanel && !(currentPanel as any)._store._isDisposed) {
 			currentPanel.reveal(vscode.ViewColumn.Beside);
+			emulator.refreshView(currentPanel);
 		} else {
 			currentPanel = emulator.openEmulatorWindow(context, vscode.ViewColumn.Beside);
+			emulator.refreshView(currentPanel);
 		}
 
 		currentPanel.onDidDispose(() => {

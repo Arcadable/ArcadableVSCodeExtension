@@ -58,6 +58,18 @@ export class Emulator {
 						}
 						return;
 					}
+					case 'digitalChanged': {
+						if (this.compileResult.game) {
+							this.compileResult.game.systemConfig.realTimeDigitalInputValues[message.index] = message.value;
+						}
+						return;
+					}
+					case 'analogChanged': {
+						if (this.compileResult.game) {
+							this.compileResult.game.systemConfig.realTimeAnalogInputValues[message.index] = message.value;
+						}
+						return;
+					}
 				}
 			},
 			undefined,
@@ -76,6 +88,9 @@ export class Emulator {
 		currentPanel.onDidChangeViewState(
 			e => {
 				const visible = e.webviewPanel.visible;
+				if(visible) {
+					this.refreshView(currentPanel);
+				}
 			},
 			null,
 			context.subscriptions
@@ -91,18 +106,37 @@ export class Emulator {
 					}
 					this.compileResult.game.stop();
 				}
-				this.loadGame(currentPanel);
+				this.loadGame(currentPanel).then(() => {
+					this.refreshView(currentPanel);
+				});
 			}
 		});
 
-		this.loadGame(currentPanel);
-
+		this.loadGame(currentPanel).then(() => {
+			this.refreshView(currentPanel);
+		});
 		return currentPanel;
 	}
 
 	closeEmulatorWindow() {
 		if(this.compileResult) {
 			this.compileResult.game.stop();
+		}
+	}
+
+	refreshView(currentPanel: vscode.WebviewPanel) {
+
+		if(this.compileResult) {
+			currentPanel.webview.postMessage({
+				command: 'setDimensions',
+				width: this.compileResult.game.systemConfig.screenWidth,
+				height: this.compileResult.game.systemConfig.screenHeight
+			});
+			currentPanel.webview.postMessage({
+				command: 'setInputs',
+				digitalInputs: this.compileResult.game.systemConfig.digitalInputPinsAmount,
+				analogInputs: this.compileResult.game.systemConfig.analogInputPinsAmount
+			});
 		}
 	}
 
@@ -146,7 +180,7 @@ export class Emulator {
 			const game = this.compileResult.game;
 
 			this.instructionSubscription = game.instructionEmitter.subscribe((instruction: any) => {
-				if (instruction.command === 'getPixel') {
+ 				if (instruction.command === 'getPixel') {
 					this.getPixelCallback = instruction.callback;
 				}
 				if (instruction.command === 'log') {
@@ -188,11 +222,7 @@ export class Emulator {
 				}
 			});
 	
-			(currentPanel as vscode.WebviewPanel).webview.postMessage({
-				command: 'setDimensions',
-				width: game.systemConfig.screenWidth,
-				height: game.systemConfig.screenHeight
-			});
+
 			game.start();
 		}
 	}

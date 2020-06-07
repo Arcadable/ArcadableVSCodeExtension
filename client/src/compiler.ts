@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value, InstructionType,
 	AnalogInputValue, DigitalInputValue, EvaluationValue, ListValue, NumberValue, PixelValue,
-	SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType, ValuePointer, NumberArrayValueTypePointer,
+	SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType,
 	ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction,
 	DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction,
-	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, NumberArrayValueType,
+	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction,
 	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, DebugLogInstruction, FunctionParseResult,
 	ValueParseResult } from 'arcadable-shared';
 import { SlowBuffer } from 'buffer';
@@ -144,7 +144,18 @@ export class ArcadableCompiler {
 			} else if (v.type === ValueType.number) {
 				v.value = '' + v.value;
 			}
-			if (data.instructionSets.findIndex(is => is.instructions.findIndex(i => i.type === InstructionType.MutateValue && i.params[0] === v.name) !== -1) === -1) {
+			let watchForNames = [v.name];
+			const listsContainingValue = data.values.filter(v2 =>
+				v2.type === ValueType.listDeclaration &&
+				(v2.value.values as string[]).findIndex(listValue => listValue === v.name) !== -1);
+
+			const listsContainingValuePointers = data.values.filter(v =>
+				v.type === ValueType.listValue &&
+				listsContainingValue.findIndex(list => list.name === v.value.list) !== -1);
+			if (listsContainingValuePointers.length > 0) {
+				watchForNames = [...watchForNames, ...listsContainingValuePointers.map(p => p.name)];
+			}
+			if (data.instructionSets.findIndex(is => is.instructions.findIndex(i => i.type === InstructionType.MutateValue && watchForNames.findIndex(n => n === i.params[0]) !== -1) !== -1) === -1) {
 				valueIndex = compressedValues.findIndex(vc => !vc.mutatable && vc.type === v.type && JSON.stringify(vc.value) === JSON.stringify(v.value));
 			} else {
 				mutatable = true;
@@ -537,11 +548,23 @@ export class ArcadableCompiler {
 						case InstructionType.FillCircle: 
 						case InstructionType.FillRect: 
 						case InstructionType.FillTriangle:
-						case InstructionType.MutateValue:
 						case InstructionType.SetRotation: {
 							data.compileErrors.push(...this.checkNumbericalReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
 							break;
 						} 
+						case InstructionType.MutateValue: {
+							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[0]);
+							if (valueIndex === -1) {
+								data.compileErrors.push(this.referenceNotFoundError(instruction.file, instruction.line, instruction.pos, instruction.params[0]));
+							} else {
+								if (data.values[valueIndex].type === ValueType.text || data.values[valueIndex].type === ValueType.listDeclaration) {
+									data.compileErrors.push(...this.checkListReferences([instruction.params[1]], data, instruction.file, instruction.line, instruction.pos));
+								} else {
+									data.compileErrors.push(...this.checkNumbericalReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
+								}
+							}
+							break;
+						}
 						case InstructionType.RunCondition: {
 							data.compileErrors.push(...this.checkInstructionSetReferences([instruction.params[1], instruction.params[1]], data, instruction.file, instruction.line, instruction.pos));
 							break;
@@ -552,17 +575,7 @@ export class ArcadableCompiler {
 						}
 						case InstructionType.DrawText: {
 							data.compileErrors.push(...this.checkNumbericalReferences(instruction.params.filter((p, i) => i !== 2), data, instruction.file, instruction.line, instruction.pos));
-							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[2]);
-							if (valueIndex === -1) {
-								data.compileErrors.push(this.referenceNotFoundError(instruction.file, instruction.line, instruction.pos, instruction.params[0]));
-							} else if (data.values[valueIndex].type !== ValueType.text) {
-								data.compileErrors.push({
-									file: instruction.file,
-									line: instruction.line,
-									pos: instruction.pos,
-									error: 'Value "' + instruction.params[0] + '" must be of type "String".'
-								});
-							}
+							data.compileErrors.push(...this.checkListReferences([instruction.params[2]], data, instruction.file, instruction.line, instruction.pos));
 						}
 						case InstructionType.DebugLog: {
 							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[0]);
@@ -600,6 +613,24 @@ export class ArcadableCompiler {
 					line: line,
 					pos: pos,
 					error: 'Value "' + v1 + '" with type "List" or "String" cannot be used here.'
+				});
+			}
+		});
+		return errors;
+	}
+
+	checkListReferences(values: string[], data: ParsedProgram, file: string, line: number, pos: number) {
+		const errors = [];
+		values.forEach(v1 => {
+			const valueIndex = data.values.findIndex(v2 => v2.name === v1)
+			if (valueIndex === -1) {
+				errors.push(this.referenceNotFoundError(file, line, pos, v1));
+			} else if (data.values[valueIndex].type !== ValueType.listDeclaration && data.values[valueIndex].type !== ValueType.text) {
+				errors.push({
+					file: file,
+					line: line,
+					pos: pos,
+					error: 'Value "' + v1 + '" not of type "List" or "String" cannot be used here.'
 				});
 			}
 		});
@@ -853,7 +884,7 @@ export class CompileResult {
 							return new ListDeclaration(
 								i,
 								v.value.values.length,
-								v.value.values.map(value => new NumberArrayValueTypePointer<TextValue>(+value, this.game)),
+								v.value.values.map(value => new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+value, this.game)),
 								'',
 								this.game
 							);
@@ -879,7 +910,12 @@ export class CompileResult {
 				case ValueType.text: {
 					return new TextValue(
 						i,
-						[...(v.value as string)].map(c => c.charCodeAt(0)),
+						[...(v.value as string)].map(c => ({
+							ID: null,
+							game: null,
+							getObject: () => null,
+							getValue: async () => c.charCodeAt(0)
+						})),
 						(v.value as string).length,
 						'',
 						this.game
@@ -942,7 +978,7 @@ export class CompileResult {
 						i,
 						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new NumberArrayValueTypePointer<TextValue>(+inst.params[2], this.game),
+						new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[2], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
 						'',
@@ -1004,8 +1040,8 @@ export class CompileResult {
 					if (values[+inst.params[0]].type === ValueType.text) {
 						return new MutateValueInstruction(
 							i,
-							new NumberArrayValueTypePointer<NumberArrayValueType>(+inst.params[0], this.game),
-							new NumberArrayValueTypePointer<NumberArrayValueType>(+inst.params[1], this.game),
+							new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[0], this.game),
+							new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[1], this.game),
 							'',
 							this.game
 						);

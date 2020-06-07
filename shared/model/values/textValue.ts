@@ -1,29 +1,30 @@
-import { ValueType } from './value';
-import { NumberArrayValueType } from './_numberArrayValueType';
+import { ValueType, ValuePointer } from './value';
 import { Arcadable } from '../arcadable';
+import { ValueArrayValueType } from './valueArrayValueType';
+import { NumberValueType } from './_numberValueType';
 
-export class TextValue extends NumberArrayValueType {
+export class TextValue<T extends NumberValueType> extends ValueArrayValueType {
 
 
     constructor(
         ID: number,
-        public value: number[],
-        public size: number,
+        public values: ValuePointer<T>[],
+        size: number,
         name: string,
         game: Arcadable
     ) {
-        super(ID, ValueType.text, name, game);
+        super(ID, size, ValueType.text, name, game);
 
     }
 
-
-    async get(): Promise<number[]> {
-        return this.value;
+    async get(): Promise<ValuePointer<T>[]> {
+        return this.values;
     }
 
-    async set(newValue: number[]) {
-        this.value = newValue;
+    async set(newValue: ValuePointer<T>[]) {
+        this.values = newValue;
     }
+
     async isTruthy() {
         return this.size > 0;
     }
@@ -33,7 +34,7 @@ export class TextValue extends NumberArrayValueType {
             ID: this.ID,
             name: this.name,
             type: this.type,
-            value: this.value,
+            value: this.values,
             size: this.size
         });
     }
