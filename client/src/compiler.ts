@@ -7,9 +7,7 @@ import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value,
 	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction,
 	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, DebugLogInstruction, FunctionParseResult,
 	ValueParseResult } from 'arcadable-shared';
-import { SlowBuffer } from 'buffer';
 import { ValueArrayValueTypePointer, ValueArrayValueType } from 'arcadable-shared/out/model/values/valueArrayValueType';
-
 
 export class ArcadableCompiler {
 	tempContent = '';
@@ -19,11 +17,11 @@ export class ArcadableCompiler {
 	}
 
 	startCompile(): CompileResult {
-
 		this.tempContent = '';
 		this.compileResult = new CompileResult(this.config);
 
 		const parseResult: {[key: string]: ParsedFile} = {};
+
 		const mainDoc = this.docs[this.docs['root'] + this.docs['main']] as vscode.TextDocument;
 
 		parseResult[mainDoc.uri.path] = new ArcadableParser().parse(mainDoc.uri.path, mainDoc.getText().split(/\n/g));
@@ -881,6 +879,7 @@ export class CompileResult {
 							);
 						}
 						case ValueType.text: {
+
 							return new ListDeclaration(
 								i,
 								v.value.values.length,

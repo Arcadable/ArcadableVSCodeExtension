@@ -7,7 +7,7 @@
 		"url": "https://github.com/Arcadable/ArcadableVSCodeExtension.git"
 	},
 	"license": "MIT",
-	"version": "1.0.2",
+	"version": "1.0.5",
 	"icon": "ArcadableIconx128.png",
 	"categories": [],
 	"engines": {
@@ -69,8 +69,10 @@
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-		"update-shared": "cd ./shared && npm run publish && cd ../server && yalc update arcadable-shared && npm install && cd ../client && yalc update arcadable-shared && npm install && cd ../",
-		"raindance": "rm -rf node_modules && rm -f package-lock.json && cd shared && rm -rf node_modules && rm -f package-lock.json && cd ../server && rm -rf node_modules && rm -f package-lock.json && rm -rf .yalc && rm -f yalc.lock && rm -rf out && cd ../client && rm -rf node_modules && rm -f package-lock.json && rm -rf .yalc && rm -f yalc.lock && rm -rf out && cd ../ && npm install && cd shared && npm install && npm run publish && cd ../server && yalc add arcadable-shared && npm install && cd ../client && yalc add arcadable-shared && npm install && cd ../"
+		"update-shared": "cd ./shared && npm run publish && cd ../server && rm -rf node_modules/arcadable-shared && npm install && cd ../client && rm -rf node_modules/arcadable-shared && npm install && cd ../",
+		"raindance": "rm -rf node_modules && rm -f package-lock.json && cd shared && rm -rf node_modules && rm -f package-lock.json && cd ../server && rm -rf node_modules && rm -f package-lock.json && rm -rf out && cd ../client && rm -rf node_modules && rm -f package-lock.json && rm -rf out && cd ../ && npm install && cd shared && npm install && npm run publish && cd ../server && npm install && cd ../client && npm install && cd ../",
+		"package": "PACKAGE_VERSION=$(cat package.json | grep version | head -1 | awk -F: '{ print $2 }' | sed 's/[\",]//g' | tr -d '[[:space:]]') && vsce package && unzip -o \"./arcadable-emulator-${PACKAGE_VERSION}.vsix\" -d \"./arcadable-unzipped\" && cp -r \"./client/node_modules/arcadable-shared\" \"./arcadable-unzipped/extension/client/node_modules/\" && cp -r \"./client/node_modules/rxjs\" \"./arcadable-unzipped/extension/client/node_modules/\" && cp -r \"./server/node_modules/arcadable-shared\" \"./arcadable-unzipped/extension/server/node_modules/\" && cd \"./arcadable-unzipped\" && sudo zip -r \"../arcadable-emulator-${PACKAGE_VERSION}.vsix\" * && cd ../ && rm -rf ./arcadable-unzipped",
+		"publish": "npm run package && PACKAGE_VERSION=$(cat package.json | grep version | head -1 | awk -F: '{ print $2 }' | sed 's/[\",]//g' | tr -d '[[:space:]]') && vsce publish --packagePath \"arcadable-emulator-${PACKAGE_VERSION}.vsix\""
 	},
 	"devDependencies": {
 		"@types/mocha": "^5.2.7",

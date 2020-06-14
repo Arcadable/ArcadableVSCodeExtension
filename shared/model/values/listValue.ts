@@ -13,7 +13,7 @@ export class ListValue<T1 extends ValueArrayValueType, T2 = number | number[]> e
         name: string,
         game: Arcadable
     ) {
-        super(ID, ValueType.listDeclaration, name, game);
+        super(ID, ValueType.listValue, name, game);
     }
 
     async get(): Promise<T2> {

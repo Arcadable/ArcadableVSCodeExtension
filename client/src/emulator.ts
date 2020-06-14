@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { Subscription } from 'rxjs';
+import { Subscription, Subject, BehaviorSubject, zip } from 'rxjs';
+import { auditTime } from 'rxjs/operators'
 import { Arcadable, SystemConfig } from 'arcadable-shared/';
 import path = require('path');
 import fs = require('fs');
@@ -9,12 +10,36 @@ export class Emulator {
 	getPixelCallback: (color: number) => {};
 	instructionSubscription: Subscription;
 	interruptionSubscription: Subscription;
+	onsaveSubscription: vscode.Disposable;
+	loadGameSubjectSubscription: Subscription;
 
 	compileResult: CompileResult;
 	exportPath: string;
+	loadGameSubject = new Subject<vscode.WebviewPanel>();
+
+	compileDoneSubject = new BehaviorSubject<boolean>(true);
+	
 	constructor(public log: vscode.OutputChannel) {
-		
+		this.loadGameSubjectSubscription = zip(
+			this.compileDoneSubject,
+			this.loadGameSubject.pipe(auditTime(200))
+		).subscribe(async ([done, currentPanel]) => {
+			if(this.compileResult) {
+				this.compileResult.game.stop();
+			}
+			if(this.instructionSubscription) {
+				this.instructionSubscription.unsubscribe();
+			}
+			if(this.interruptionSubscription) {
+				this.interruptionSubscription.unsubscribe();
+			}
+			await this.loadGame(currentPanel).then(() => {
+				this.refreshView(currentPanel);
+				this.compileDoneSubject.next(true);
+			});
+		})
 	}
+
 
 	openEmulatorWindow(context: vscode.ExtensionContext, column: vscode.ViewColumn) {
 
@@ -79,8 +104,18 @@ export class Emulator {
 		currentPanel.onDidDispose(
 			() => {
 				currentPanel = undefined;
-				this.instructionSubscription.unsubscribe();
-				this.interruptionSubscription.unsubscribe();
+				if(this.compileResult) {
+					this.compileResult.game.stop();
+				}
+				if(this.instructionSubscription) {
+					this.instructionSubscription.unsubscribe();
+				}
+				if(this.interruptionSubscription) {
+					this.interruptionSubscription.unsubscribe();
+				}
+				if(this.onsaveSubscription) {
+					this.onsaveSubscription.dispose();
+				}
 			},
 			null,
 			context.subscriptions
@@ -95,34 +130,16 @@ export class Emulator {
 			null,
 			context.subscriptions
 		);
-		vscode.workspace.onDidSaveTextDocument((document: vscode.TextDocument) => {
+		this.onsaveSubscription = vscode.workspace.onDidSaveTextDocument((document: vscode.TextDocument) => {
 			if ((document.fileName.endsWith('.arc') || document.fileName.endsWith('arcadable.config.json')) && document.uri.scheme === 'file') {
-				if(this.compileResult) {
-					if(this.instructionSubscription) {
-						this.instructionSubscription.unsubscribe();
-					}
-					if(this.interruptionSubscription) {
-						this.interruptionSubscription.unsubscribe();
-					}
-					this.compileResult.game.stop();
-				}
-				this.loadGame(currentPanel).then(() => {
-					this.refreshView(currentPanel);
-				});
+				this.loadGameSubject.next(currentPanel);
 			}
 		});
+		this.loadGameSubject.next(currentPanel);
 
-		this.loadGame(currentPanel).then(() => {
-			this.refreshView(currentPanel);
-		});
 		return currentPanel;
 	}
 
-	closeEmulatorWindow() {
-		if(this.compileResult) {
-			this.compileResult.game.stop();
-		}
-	}
 
 	refreshView(currentPanel: vscode.WebviewPanel) {
 
@@ -141,6 +158,8 @@ export class Emulator {
 	}
 
 	async loadGame(currentPanel: any) {
+
+
 		this.log.clear();
 		const startTime = process.hrtime();
 		const compileResult = await this.compile();
@@ -199,26 +218,28 @@ export class Emulator {
 				values: number[],
 				instructions: number[]
 			}) => {
-				this.instructionSubscription.unsubscribe();
-				this.interruptionSubscription.unsubscribe();
-
-				this.log.appendLine('Program interrupted.');
-				this.log.appendLine(interruption.message);
-				if (interruption.values.length > 0) {
-					this.log.appendLine('Values that could be involved with the interruption:');
-					interruption.values.forEach(v => {
-						compileResult.parsedProgram.compressedValues[v].linked.forEach(linked => {
-							this.log.appendLine(linked.file.replace(vscode.workspace.rootPath, '') + ':' + linked.line + ':' + linked.pos + ':' + linked.name);
+				if(interruption) {
+					this.instructionSubscription.unsubscribe();
+					this.interruptionSubscription.unsubscribe();
+	
+					this.log.appendLine('Program interrupted.');
+					this.log.appendLine(interruption.message);
+					if (interruption.values.length > 0) {
+						this.log.appendLine('Values that could be involved with the interruption:');
+						interruption.values.forEach(v => {
+							compileResult.parsedProgram.compressedValues[v].linked.forEach(linked => {
+								this.log.appendLine(linked.file.replace(vscode.workspace.rootPath, '') + ':' + linked.line + ':' + linked.pos + ':' + linked.name);
+							});
 						});
-					});
-				}
-				if (interruption.instructions.length > 0) {
-					this.log.appendLine('Instructions that could be involved with the interruption:');
-					interruption.instructions.forEach(v => {
-						compileResult.parsedProgram.compressedInstructions[v].linked.forEach(linked => {
-							this.log.appendLine(linked.file.replace(vscode.workspace.rootPath, '') + ':' + linked.line + ':' + linked.pos);
+					}
+					if (interruption.instructions.length > 0) {
+						this.log.appendLine('Instructions that could be involved with the interruption:');
+						interruption.instructions.forEach(v => {
+							compileResult.parsedProgram.compressedInstructions[v].linked.forEach(linked => {
+								this.log.appendLine(linked.file.replace(vscode.workspace.rootPath, '') + ':' + linked.line + ':' + linked.pos);
+							});
 						});
-					});
+					}
 				}
 			});
 	
@@ -271,9 +292,10 @@ export class Emulator {
 		const files = (await vscode.workspace.findFiles('**/*.arc'));
 		let docs: any = {
 			'main': mainFileName,
-			'root': vscode.workspace.rootPath + mainPath
+			'root': vscode.workspace.rootPath.replace(/\\/g, '/') + mainPath
 		};
-	
+
+
 		await Promise.all(files.map((file) => 
 			new Promise((res, rej) => {
 				vscode.workspace.openTextDocument(file).then(fileOpened => {
