@@ -290,9 +290,13 @@ export class Emulator {
 		const mainFileName = mainSplit[mainSplit.length - 1];
 		const mainPath = ((config as any).project.main as string).split(mainFileName)[0];
 		const files = (await vscode.workspace.findFiles('**/*.arc'));
+		let root = vscode.workspace.rootPath.replace(/\\/g, '/') + mainPath;
+		if(root.charAt(0) !== '/') {
+			root = '/' + root;
+		}
 		let docs: any = {
 			'main': mainFileName,
-			'root': vscode.workspace.rootPath.replace(/\\/g, '/') + mainPath
+			'root': root
 		};
 
 
