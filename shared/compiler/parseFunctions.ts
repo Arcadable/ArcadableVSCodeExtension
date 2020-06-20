@@ -1170,7 +1170,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					if (functionLineNumber + 1 < lines.length) {
 						functionLineNumber++;
 						functionCodeLine = lines[functionLineNumber];
-						if (functionCodeLine.includes('{') && !functionCodeLine.includes('else')) {
+						if (functionCodeLine.includes('{') && !(level === 1 && functionCodeLine.includes('else'))) {
 							level++;
 						}
 						if (functionCodeLine.includes('}')) {

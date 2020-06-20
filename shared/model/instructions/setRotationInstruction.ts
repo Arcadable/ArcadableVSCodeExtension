@@ -19,7 +19,7 @@ export class SetRotationInstruction extends Instruction {
             const rotation = await this.rotationValue.getValue();
 
             this.game.instructionEmitter.next({
-                command: 'drawCircle',
+                command: 'setRotation',
                 rotation,
             });
         }];
