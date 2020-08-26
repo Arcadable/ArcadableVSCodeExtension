@@ -41,7 +41,7 @@ export function ParseValueNumber(section: string, otherMatchWithType: RegExpMatc
 		value: null,
 		errors: []
 	};
-	const numberMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)Number( *)=( *)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))END_OF_SECTION$/g) as RegExpMatchArray;
+	const numberMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)Number( *)=( *)((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))END_OF_SECTION$/g) as RegExpMatchArray;
 	if (numberMatch) {
 		const value = numberMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
 		result.value = {
@@ -209,7 +209,7 @@ export function ParseValueEval(section: string, otherMatchWithType: RegExpMatchA
 		errors: []
 	};
        
-	const evalMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Eval( *)=( *)(static)?( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))END_OF_SECTION$/g) as RegExpMatchArray;
+	const evalMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Eval( *)=( *)(static)?( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))END_OF_SECTION$/g) as RegExpMatchArray;
 	if (evalMatch) {
 		let value = evalMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split(/=(.+)/g)[1];
 		const stat = value.startsWith('static');
@@ -319,7 +319,7 @@ export function ParseValueListNumber(section: string, otherMatchWithType: RegExp
 		value: null,
 		errors: []
 	};
-	const listMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)List<( *)Number( *)>( *)=( *)(\[( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *))+(,( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))*( *)\]END_OF_SECTION$/g) as RegExpMatchArray;
+	const listMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)List<( *)Number( *)>( *)=( *)(\[( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *))+(,( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))))*( *)\]END_OF_SECTION$/g) as RegExpMatchArray;
 	if (listMatch) {
 		const value = listMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
 		const values = value.replace('[', '').replace(']', '').replace(/\s/g, '').split(',');
@@ -630,7 +630,7 @@ export function ParseValueListEval(section: string, otherMatchWithType: RegExpMa
 		value: null,
 		errors: []
 	};
-	const listMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)List<( *)Eval( *)>( *)=( *)(\[( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((static)?( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))))( *))+(,( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((static)?( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))))*( *)\]END_OF_SECTION$/g) as RegExpMatchArray;
+	const listMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)List<( *)Eval( *)>( *)=( *)(\[( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((static)?( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))))( *))+(,( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((static)?( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))))))*( *)\]END_OF_SECTION$/g) as RegExpMatchArray;
 	if (listMatch) {
 		const value = listMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
 		const values = value.replace('[', '').replace(']', '').replace(/\s/g, '').split(',');
@@ -796,7 +796,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 		let parsedLinesCount = 1;
 		sections.forEach(section => {
 
-			section += 'END_OF_SECTION';
+			section = section.trimEnd() + 'END_OF_SECTION';
 			let position = 0;
 			let char = section.charAt(position);
 			while (char.match(/\s/g)) {
@@ -834,7 +834,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.drawPixel': {
-							const drawPixelMatch = section.substr(position).match(/^draw\.drawPixel\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const drawPixelMatch = section.substr(position).match(/^draw\.drawPixel\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (drawPixelMatch) {
 								const params = drawPixelMatch[0].replace(/\s/g, '').replace('draw.drawPixel(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.DrawPixel;
@@ -845,7 +845,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.drawText': {
-							const drawTextMatch = section.substr(position).match(/^draw\.drawText\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const drawTextMatch = section.substr(position).match(/^draw\.drawText\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (drawTextMatch) {
 								const params = drawTextMatch[0].replace(/\s/g, '').replace('draw.drawText(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.DrawText;
@@ -856,7 +856,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.drawCircle': {
-							const drawCircleMatch = section.substr(position).match(/^draw\.drawCircle\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const drawCircleMatch = section.substr(position).match(/^draw\.drawCircle\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (drawCircleMatch) {
 								const params = drawCircleMatch[0].replace(/\s/g, '').replace('draw.drawCircle(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.DrawCircle;
@@ -867,7 +867,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.fillCircle': {
-							const fillCircleMatch = section.substr(position).match(/^draw\.fillCircle\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const fillCircleMatch = section.substr(position).match(/^draw\.fillCircle\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (fillCircleMatch) {
 								const params = fillCircleMatch[0].replace(/\s/g, '').replace('draw.fillCircle(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.FillCircle;
@@ -878,7 +878,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.drawRect': {
-							const drawRectMatch = section.substr(position).match(/^draw\.drawRect\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const drawRectMatch = section.substr(position).match(/^draw\.drawRect\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (drawRectMatch) {
 								const params = drawRectMatch[0].replace(/\s/g, '').replace('draw.drawRect(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.DrawRect;
@@ -889,7 +889,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.fillRect': {
-							const fillRectMatch = section.substr(position).match(/^draw\.fillRect\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const fillRectMatch = section.substr(position).match(/^draw\.fillRect\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (fillRectMatch) {
 								const params = fillRectMatch[0].replace(/\s/g, '').replace('draw.fillRect(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.FillRect;
@@ -900,7 +900,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.drawTriangle': {
-							const drawTriangleMatch = section.substr(position).match(/^draw\.drawTriangle\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const drawTriangleMatch = section.substr(position).match(/^draw\.drawTriangle\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (drawTriangleMatch) {
 								const params = drawTriangleMatch[0].replace(/\s/g, '').replace('draw.drawTriangle(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.DrawTriangle;
@@ -911,7 +911,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.fillTriangle': {
-							const fillTriangleMatch = section.substr(position).match(/^draw\.fillTriangle\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const fillTriangleMatch = section.substr(position).match(/^draw\.fillTriangle\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (fillTriangleMatch) {
 								const params = fillTriangleMatch[0].replace(/\s/g, '').replace('draw.fillTriangle(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.FillTriangle;
@@ -922,7 +922,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.drawLine': {
-							const drawLineMatch = section.substr(position).match(/^draw\.drawLine\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const drawLineMatch = section.substr(position).match(/^draw\.drawLine\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (drawLineMatch) {
 								const params = drawLineMatch[0].replace(/\s/g, '').replace('draw.drawLine(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.DrawLine;
@@ -933,7 +933,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 							break;
 						}
 						case 'draw.setRotation': {
-							const setRotationMatch = section.substr(position).match(/^draw\.setRotation\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							const setRotationMatch = section.substr(position).match(/^draw\.setRotation\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 							if (setRotationMatch) {
 								const params = setRotationMatch[0].replace(/\s/g, '').replace('draw.setRotation(', '').replace(')END_OF_SECTION', '').split(',');
 								drawInstruction.type = InstructionType.SetRotation;
@@ -981,7 +981,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					result.errors.push({ error: 'Unexpected execute format ("execute(myFunction)"), or missing ";"', pos: position + totalPosition + executeMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 				}
 			} else if (debugMatch) {
-				const debugMatchFormat = section.substr(position).match(/^debug\.log\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+				const debugMatchFormat = section.substr(position).match(/^debug\.log\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 				if (debugMatchFormat) {
 					const debugName = 'debug -' + name + '-' + (instructionSetStartLine + lineNumber + 2) + '-' + (position + totalPosition + debugMatch[0].length);
 
@@ -1010,9 +1010,9 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 				}
 
 			} else if (mutateMatch) {
-				const evalMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))END_OF_SECTION$/g) as RegExpMatchArray;
-				const numberMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))END_OF_SECTION$/g) as RegExpMatchArray;
-				const valueMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))END_OF_SECTION$/g) as RegExpMatchArray;
+				const evalMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))END_OF_SECTION$/g) as RegExpMatchArray;
+				const numberMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))END_OF_SECTION$/g) as RegExpMatchArray;
+				const valueMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))END_OF_SECTION$/g) as RegExpMatchArray;
 
 				if (evalMatch) {
 					const valueSplit = evalMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split(/=(.+)/g);
@@ -1105,7 +1105,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 				}
 			} else if (conditionMatch) {
 				const conditionValueMatch = section.substr(position).match(/^if( *)\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)\)( *){END_OF_SECTION$/g) as RegExpMatchArray;
-				const conditionEvalMatch = section.substr(position).match(/^if( *)\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\.([0-9]+))?)|(\.([0-9]+))))( *)\)( *){END_OF_SECTION$/g) as RegExpMatchArray;
+				const conditionEvalMatch = section.substr(position).match(/^if( *)\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)(\+|-|\*|\/|%|&|\||\^|<<|>>|pow|==|!=|>|<|>=|<=)( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)( *){END_OF_SECTION$/g) as RegExpMatchArray;
 				let functionLineNumber = lineNumber;
 				let conditionInstructionSetSucceedName = 'if-succeed-' + name + '-' + (instructionSetStartLine + lineNumber + 2) + '-' + (position + totalPosition + conditionMatch[0].length);
 				let conditionInstructionSetFailedName = '';

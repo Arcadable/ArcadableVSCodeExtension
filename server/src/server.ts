@@ -18,9 +18,7 @@ import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 import { ArcadableParser, valueTypes, instructionTypes, ParsedFile, FunctionParseResult, ValueParseResult } from 'arcadable-shared/';
-let connection: IConnection = createConnection(process.stdin, process.stdout);
-connection.console.log("arc - Open server.js");
-
+let connection: IConnection = createConnection(ProposedFeatures.all);
 let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability: boolean = false;
@@ -28,7 +26,6 @@ let hasWorkspaceFolderCapability: boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
 
 connection.onInitialize((params: InitializeParams) => {
-	connection.console.log("arc - connection.onInitialize");
 
 	let capabilities = params.capabilities;
 
@@ -43,9 +40,6 @@ connection.onInitialize((params: InitializeParams) => {
 		capabilities.textDocument.publishDiagnostics &&
 		capabilities.textDocument.publishDiagnostics.relatedInformation
 	);
-	connection.console.log("arc - hasConfigurationCapability " + hasConfigurationCapability);
-	connection.console.log("arc - hasWorkspaceFolderCapability " + hasWorkspaceFolderCapability);
-	connection.console.log("arc - hasDiagnosticRelatedInformationCapability " + hasDiagnosticRelatedInformationCapability);
 
 	const result: InitializeResult = {
 		capabilities: {
@@ -66,37 +60,29 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
-	connection.console.log("arc - connection.onInitialized");
 
 	if (hasConfigurationCapability) {
-		connection.console.log("arc - if hasConfigurationCapability");
 
 		connection.client.register(DidChangeConfigurationNotification.type, undefined);
 	}
 	if (hasWorkspaceFolderCapability) {
-		connection.console.log("arc - if hasWorkspaceFolderCapability");
 
 		connection.workspace.onDidChangeWorkspaceFolders(_event => {
-			connection.console.log("arc - connection.workspace.onDidChangeWorkspaceFolders");
 
-			connection.console.log('Workspace folder change event received.');
 		});
 	}
 });
 
 
 documents.onDidChangeContent(change => {
-	connection.console.log("arc - documents.onDidChangeContent");
 
 	validateTextDocument(change.document);
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-	connection.console.log("arc - validateTextDocument");
 
 	let diagnostics: Diagnostic[] = [];
 	const data = new ArcadableParser().parse(textDocument.uri, textDocument.getText().split(/\n/g));
-	connection.console.log(JSON.stringify(data));
 
 	const functionParseResultExecutables = {
 		file: data.filePath,
@@ -105,7 +91,6 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 
 
 	functionParseResultExecutables.executables.forEach(executable => {
-		connection.console.log("arc - functionParseResultExecutables.executables.forEach");
 
 		const functions = executable();
 
@@ -138,14 +123,12 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 		};
 		diagnostics.push(diagnostic);
 	});
-	connection.console.log(JSON.stringify(diagnostics));
 
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-		connection.console.log("arc - connection.onCompletion");
 
 		return [
 			...valueTypes.filter(v => !!v.codeValue).map(v => ({label: v.codeValue as string, detail: v.viewValue, data: v.value, kind: CompletionItemKind.TypeParameter})),
@@ -156,7 +139,6 @@ connection.onCompletion(
 
 connection.onCompletionResolve(
 	(item: CompletionItem): CompletionItem => {
-		connection.console.log("arc - connection.onCompletionResolve");
 
 		return item;
 	}

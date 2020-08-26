@@ -25,7 +25,6 @@ export class ArcadableCompiler {
 		const mainDoc = this.docs[this.docs['root'] + this.docs['main']] as vscode.TextDocument;
 
 		parseResult[mainDoc.uri.path] = new ArcadableParser().parse(mainDoc.uri.path, mainDoc.getText().split(/\n/g));
-
 		let imports: {[key: string]: string} = {};
 		if (parseResult[mainDoc.uri.path].imports && parseResult[mainDoc.uri.path].imports.length > 0) {
 			imports = parseResult[mainDoc.uri.path].imports.reduce((acc, curr, i) => ({...acc, [parseResult[mainDoc.uri.path].filePath + '////' + i]: curr}), {});
@@ -68,7 +67,6 @@ export class ArcadableCompiler {
 			error: string
 		}[]);
 		this.compileResult.parseErrors = parseErrors;
-
 		if (parseErrors.length === 0) {
 
 			const parsedProgram = new ParsedProgram(parseResult);
@@ -135,6 +133,9 @@ export class ArcadableCompiler {
 		}[] = [];
 
 		data.values.forEach((v, index) => {
+
+
+
 			let valueIndex = -1;
 			let mutatable = false;
 			if (v.type === ValueType.number && (v.value  + '').charAt(0) === '.') {
@@ -153,11 +154,15 @@ export class ArcadableCompiler {
 			if (listsContainingValuePointers.length > 0) {
 				watchForNames = [...watchForNames, ...listsContainingValuePointers.map(p => p.name)];
 			}
+
 			if (data.instructionSets.findIndex(is => is.instructions.findIndex(i => i.type === InstructionType.MutateValue && watchForNames.findIndex(n => n === i.params[0]) !== -1) !== -1) === -1) {
+
+				
 				valueIndex = compressedValues.findIndex(vc => !vc.mutatable && vc.type === v.type && JSON.stringify(vc.value) === JSON.stringify(v.value));
 			} else {
 				mutatable = true;
 			}
+
 			if (valueIndex === -1) {
 				valueIndex = compressedValues.push({
 					type: v.type,
@@ -304,7 +309,6 @@ export class ArcadableCompiler {
 					}
 				});
 			});
-
 			const indexChanges = {};
 			compressedValues = compressedValues.reduce((acc, curr, oldIndex) => {
 				const existingIndex = acc.findIndex(existing =>
@@ -345,14 +349,14 @@ export class ArcadableCompiler {
 						optimized = true;
 					});
 				});
-				compressedValues.forEach(v => {
+				compressedValues.forEach((v, i) => {
 					switch(v.type) {
 						case ValueType.evaluation: {
 							if (!isNaN(+v.value.left) && v.value.left === oldIndex) {
 								v.value.left = newIndex.toString();
 								optimized = true;
 							}
-							if (!isNaN(+v.value.right) && v.value.left === oldIndex) {
+							if (!isNaN(+v.value.right) && v.value.right === oldIndex) {
 								v.value.right = newIndex.toString();
 								optimized = true;
 							}

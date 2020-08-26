@@ -357,26 +357,21 @@ export class Arcadable {
     	mainSet.instructions.forEach(i => {
     		tempBinaryString += this.makeLength(i.ID.toString(2), 16);
 		});
-		console.log(mainSet.ID);
-
 
 		const renderSet = this.instructionSets[this.renderInstructionSet];
     	tempBinaryString += this.makeLength(renderSet.ID.toString(2), 16);
 		tempBinaryString += this.makeLength(renderSet.size.toString(2), 16);
-		console.log(renderSet.ID);
 
     	renderSet.instructions.forEach(i => {
     		tempBinaryString += this.makeLength(i.ID.toString(2), 16);
 		});
     	Object.keys(this.instructionSets).filter(k => +k !== this.mainInstructionSet && +k !== this.renderInstructionSet).forEach(k => {
-			console.log(k);
     		tempBinaryString += this.makeLength(this.instructionSets[Number(k)].ID.toString(2), 16);
     		tempBinaryString += this.makeLength(this.instructionSets[Number(k)].size.toString(2), 16);
     		this.instructionSets[Number(k)].instructions.forEach(i => {
     			tempBinaryString += this.makeLength(i.ID.toString(2), 16);
     		});
 		});
-		console.log(this.instructionSets);
 
     	binaryString += this.makeLength((tempBinaryString.length / 8).toString(2), 16);
     	binaryString += tempBinaryString;

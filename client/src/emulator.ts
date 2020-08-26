@@ -242,7 +242,6 @@ export class Emulator {
 					}
 				}
 			});
-	
 
 			game.start();
 		}

@@ -125,7 +125,7 @@ export class ArcadableParser {
     							break;
     						}
     						case 'Function': {
-    							const res = GetParseFunctionExecutable(section.substr(position), otherMatchWithType, lineNumber, lines);
+								const res = GetParseFunctionExecutable(section.substr(position), otherMatchWithType, lineNumber, lines);
     							functionParseResults.push(res);
     							parsedLinesCount = res.parsedCount;
     							break;
