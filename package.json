@@ -7,7 +7,7 @@
 		"url": "https://github.com/Arcadable/ArcadableVSCodeExtension.git"
 	},
 	"license": "MIT",
-	"version": "1.0.8",
+	"version": "1.0.9",
 	"icon": "ArcadableIconx128.png",
 	"categories": [],
 	"engines": {
