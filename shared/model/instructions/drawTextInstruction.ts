@@ -40,7 +40,6 @@ export class DrawTextInstruction extends Instruction {
             const textvalue = await (text as ValuePointer<NumberValueType>[]).reduce(async (acc, curr) => {
                 return (await acc) + String.fromCharCode(await curr.getValue());
             }, new Promise<string>(res => res('')));
-            pixelTextY += scale * 8;
             this.game.instructionEmitter.next({
                 command: 'drawText',
                 pixelTextX,

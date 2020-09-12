@@ -176,7 +176,7 @@ export class Arcadable {
     export(): Uint8Array {
     	let binaryString = '';
 
-    	let tempBinaryString = '';
+		let tempBinaryString = '';
     	Object.keys(this.values).forEach(k => {
     		tempBinaryString += this.makeLength(this.values[Number(k)].ID.toString(2), 16);
     		tempBinaryString += this.makeLength(this.values[Number(k)].type.toString(2), 8);

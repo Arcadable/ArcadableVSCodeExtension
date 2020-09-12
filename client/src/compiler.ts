@@ -8,6 +8,7 @@ import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value,
 	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, DebugLogInstruction, FunctionParseResult,
 	ValueParseResult } from 'arcadable-shared';
 import { ValueArrayValueTypePointer, ValueArrayValueType } from 'arcadable-shared/out/model/values/valueArrayValueType';
+import { Console } from 'console';
 
 export class ArcadableCompiler {
 	tempContent = '';
@@ -59,7 +60,6 @@ export class ArcadableCompiler {
 			}
 			delete imports[currentKey];
 		}
-
 		const parseErrors = Object.keys(parseResult).reduce((acc, curr) => [...acc, ...parseResult[curr].errors], [] as {
 			file: string,
 			line: number,
@@ -68,11 +68,12 @@ export class ArcadableCompiler {
 		}[]);
 		this.compileResult.parseErrors = parseErrors;
 		if (parseErrors.length === 0) {
-
 			const parsedProgram = new ParsedProgram(parseResult);
 			this.compileResult.compileErrors.push(...parsedProgram.compileErrors);
 			if (this.compileResult.compileErrors.length === 0) {
+
 				const gameData = this.checkAndMerge(parsedProgram);
+
 				this.compileResult.compileErrors = gameData.compileErrors;
 				if (this.compileResult.compileErrors.length === 0) {
 					const mainInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
@@ -101,7 +102,6 @@ export class ArcadableCompiler {
 				}
 			}
 		}
-
 		return this.compileResult;
 	}
 
@@ -145,7 +145,7 @@ export class ArcadableCompiler {
 			}
 			let watchForNames = [v.name];
 			const listsContainingValue = data.values.filter(v2 =>
-				v2.type === ValueType.listDeclaration &&
+				(v2.type === ValueType.listDeclaration || v2.type === ValueType.text) &&
 				(v2.value.values as string[]).findIndex(listValue => listValue === v.name) !== -1);
 
 			const listsContainingValuePointers = data.values.filter(v =>
@@ -235,8 +235,9 @@ export class ArcadableCompiler {
 			optimizationLoops++;
 			optimized = false;
 			compressedInstructionSets.forEach((is, setIndex) => {
-				compressedInstructions.forEach(i => {
+				compressedInstructions.forEach((i) => {
 					if (i.type === InstructionType.RunSet && isNaN(+i.params[0]) && is.linked.findIndex(l => l.name === i.params[0]) !== -1) {
+
 						i.params[0] = setIndex.toString();
 						optimized = true;
 					}
@@ -254,9 +255,10 @@ export class ArcadableCompiler {
 			});
 
 			compressedValues.forEach((v, valueIndex) => {
-				compressedInstructions.forEach(i => {
-					const paramIndexes = i.params.reduce((acc, curr, index) => (isNaN(+curr) && v.linked.findIndex(l => l.name === curr) !== -1) ? [...acc, index] : acc, []);
-					paramIndexes.forEach(p => {
+				compressedInstructions.filter(i => i.type !== InstructionType.RunSet).forEach(i => {
+					const paramIndexes = i.params.reduce((acc, curr, index) => (isNaN(+curr) && v.linked.findIndex(l => l.name === curr) !== -1) ? [...acc, index] : acc, [] as number[]);
+					
+					paramIndexes.filter(p => i.type !== InstructionType.RunCondition || p === 0).forEach(p => {
 						i.params[p] = valueIndex.toString();
 						optimized = true;
 					});
@@ -275,6 +277,7 @@ export class ArcadableCompiler {
 								}
 								break;
 							}
+							case ValueType.text:
 							case ValueType.listDeclaration: {
 								const listIndexes = v2.value.values.reduce((acc, curr, index) => (isNaN(+curr) && v.linked.findIndex(l => l.name === curr) !== -1) ? [...acc, index] : acc, []);
 								listIndexes.forEach(p => {
@@ -342,9 +345,11 @@ export class ArcadableCompiler {
 
 			Object.keys(indexChanges).forEach(oldIndex => {
 				const newIndex = indexChanges[oldIndex];
-				compressedInstructions.forEach(i => {
+				compressedInstructions.filter(i => i.type !== InstructionType.RunSet).forEach((i) => {
 					const paramIndexes = i.params.reduce((acc, curr, index) => (!isNaN(+curr) && curr === oldIndex) ? [...acc, index] : acc, []);
-					paramIndexes.forEach(p => {
+
+					paramIndexes.filter(p => i.type !== InstructionType.RunCondition || p === 0).forEach(p => {
+
 						i.params[p] = newIndex.toString();
 						optimized = true;
 					});
@@ -362,6 +367,7 @@ export class ArcadableCompiler {
 							}
 							break;
 						}
+						case ValueType.text:
 						case ValueType.listDeclaration: {
 							const listIndexes = v.value.values.reduce((acc, curr, index) => (!isNaN(+curr) && curr === oldIndex) ? [...acc, index] : acc, []);
 							listIndexes.forEach(p => {
@@ -493,7 +499,7 @@ export class ArcadableCompiler {
 				})
 			}
 
-			if (v.type === ValueType.listDeclaration) {
+			if (v.type === ValueType.listDeclaration || v.type === ValueType.text) {
 				const value = (v.value as {type: ValueType, values: string[]});
 				value.values.forEach(v1 => {
 					const valueIndex = data.values.findIndex(v2 => v2.name === v1)
@@ -741,7 +747,6 @@ export class ParsedProgram {
 			e.executables.forEach(executable => {
 
 				const functions = executable();
-
 				this.instructionSets.push(
 					...functions.map(f => ({
 						name: f.name,
@@ -913,13 +918,8 @@ export class CompileResult {
 				case ValueType.text: {
 					return new TextValue(
 						i,
-						[...(v.value as string)].map(c => ({
-							ID: null,
-							game: null,
-							getObject: () => null,
-							getValue: async () => c.charCodeAt(0)
-						})),
-						(v.value as string).length,
+						v.value.values.map(value => new NumberValueTypePointer<NumberValueType>(+value, this.game)),
+						v.value.values.length,
 						'',
 						this.game
 					);

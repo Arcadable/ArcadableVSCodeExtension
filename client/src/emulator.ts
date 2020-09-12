@@ -85,7 +85,7 @@ export class Emulator {
 					}
 					case 'digitalChanged': {
 						if (this.compileResult.game) {
-							this.compileResult.game.systemConfig.realTimeDigitalInputValues[message.index] = message.value;
+							this.compileResult.game.systemConfig.realTimeDigitalInputValues[message.index] = message.value ? 1 : 0;
 						}
 						return;
 					}
@@ -319,7 +319,6 @@ export class Emulator {
 		);
 
 		const compileResult = new ArcadableCompiler(conf, docs).startCompile();
-	
 		return compileResult;
 	}
 

@@ -104,12 +104,15 @@ export class ArcadableParser {
     							break;
     						}
     						case 'String': {
-    							valueParseResults.push({
-									parseResult: ParseValueString(section.substr(position), otherMatchWithType),
-									line: lineNumber + 1,
-									pos: position + totalPosition,
-									file: fileName
-								});
+								valueParseResults.push(...ParseValueString(section.substr(position), otherMatchWithType).map(r => ({
+    								parseResult: {
+    									value: r.value,
+    									errors: r.errors
+    								},
+    								line: lineNumber + 1,
+    								pos: position + totalPosition,
+    								file: fileName
+    							})));
     							break;
     						}
     						case 'Eval': {

@@ -15,6 +15,7 @@ export class InstructionSet extends LogicElement {
     }
 
     execute(): (() => Promise<any>)[] {
+
         return this.instructions.map(
             (instruction: InstructionPointer) => async () => await instruction.execute()
         );

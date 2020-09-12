@@ -181,7 +181,8 @@ export function ParseValueConfig(section: string, otherMatchWithType: RegExpMatc
 export function ParseValueString(section: string, otherMatchWithType: RegExpMatchArray) {
 	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
 	const name = values[0];
-	const result: ValueParseResult = {
+	const result: ValueParseResult[] = [];
+	const main: ValueParseResult = {
 		value: null,
 		errors: []
 	};
@@ -189,16 +190,40 @@ export function ParseValueString(section: string, otherMatchWithType: RegExpMatc
 	if (stringMatch) {
 		const valueRaw = stringMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
 		const value = valueRaw.charAt(0) === '"' ? valueRaw.replace(/"/g, '') : valueRaw.replace(/'/g, '');
-		result.value = {
+
+		const actualValues: string[] = [];
+		[...value].forEach((char, i) => {
+			const parsed = char.charCodeAt(0);
+			const subName = name + '-sub' + i;
+			const subValue: ValueParseResult = {
+				value: {
+					type: ValueType.number,
+					value: parsed,
+					name: subName
+				},
+				errors: []
+			};
+			actualValues.push(subName);
+			result.push(subValue);
+		});
+		main.value = {
 			type: ValueType.text,
-			value,
+			value: {
+				values: actualValues,
+				type: ValueType.number
+			},
 			name
 		};
+
+
 	} else {
-		result.errors.push({ error: 'Incorrect string format or missing ";"', pos: otherMatchWithType[0].length });
+		main.errors.push({ error: 'Incorrect string format or missing ";"', pos: otherMatchWithType[0].length });
 	}
+	result.push(main);
 	return result;
 }
+
+
 
 export function ParseValueEval(section: string, otherMatchWithType: RegExpMatchArray) {
 	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
@@ -594,16 +619,36 @@ export function ParseValueListString(section: string, otherMatchWithType: RegExp
 			if((first === '"' && last === '"') || (first === '\'' && last === '\'')) {
 				const subName = name + '-sub' + i;
 				const value = first === '"' ? v.replace(/"/g, '') : v.replace(/'/g, '');
+
+				const actualStringValues: string[] = [];
+				[...value].forEach((char, i) => {
+					const parsed = char.charCodeAt(0);
+					const subStringName = name + '-sub' + i;
+					const subStringValue: ValueParseResult = {
+						value: {
+							type: ValueType.number,
+							value: parsed,
+							name: subStringName
+						},
+						errors: []
+					};
+					actualStringValues.push(subStringName);
+					result.push(subStringValue);
+				});
 				const subValue: ValueParseResult = {
 					value: {
 						type: ValueType.text,
-						value,
+						value: {
+							values: actualStringValues,
+							type: ValueType.number
+						},
 						name: subName
 					},
 					errors: []
 				};
 				actualValues.push(subName);
 				result.push(subValue);
+
 			} else {
 				actualValues.push(v);
 			}

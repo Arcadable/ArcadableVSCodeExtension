@@ -90,6 +90,7 @@ window.addEventListener('message', event => {
             canvas.setAttribute('height', message.height);
             tempCanvas.setAttribute('width', message.width);
             tempCanvas.setAttribute('height', message.height);
+            setDimensions(message.width, message.height);
             break;
         case 'getPixel':
             const data = canvasContext.getImageData(
@@ -107,57 +108,57 @@ window.addEventListener('message', event => {
             break;
         case 'clear':
             renderInstructions.push(() => {
-                clear(canvasContext);
+                clear();
             });
             break;
         case 'drawCircle':
             renderInstructions.push(() => {
-                drawCircle(canvasContext, message.color, message.centerX, message.centerY, message.radius);
+                drawCircle(message.centerX, message.centerY, message.radius, message.color);
             });
             break;
         case 'fillCircle':
             renderInstructions.push(() => {
-                fillCircle(canvasContext, message.color, message.centerX, message.centerY, message.radius);
+                fillCircle(message.centerX, message.centerY, message.radius, message.color);
             });
             break;
         case 'drawLine':
             renderInstructions.push(() => {
-                drawLine(canvasContext, tempCanvasContext, message.lineColor, message.pos1X, message.pos1Y, message.pos2X, message.pos2Y);
+                drawLine(message.pos1X, message.pos1Y, message.pos2X, message.pos2Y, message.lineColor);
             });
             break;
         case 'drawPixel':
             renderInstructions.push(() => {
-                drawPixel(canvasContext, message.pixelColor, message.x, message.y);
+                drawPixel(message.x, message.y, message.pixelColor);
             });
             break;
         case 'drawRect':
             renderInstructions.push(() => {
-                drawRect(canvasContext, message.drawRectColor, message.topLeftDrawX, message.topLeftDrawY, message.width, message.height);
+                drawRect(message.topLeftDrawX, message.topLeftDrawY, message.width, message.height, message.drawRectColor);
             });
             break;
         case 'fillRect':
             renderInstructions.push(() => {
-                fillRect(canvasContext, message.drawRectColor, message.topLeftDrawX, message.topLeftDrawY, message.width, message.height);
+                fillRect(message.topLeftDrawX, message.topLeftDrawY, message.width, message.height, message.drawRectColor);
             });
             break;
         case 'drawText':
             renderInstructions.push(() => {
-                drawText(canvasContext, tempCanvasContext, message.textColor, message.textvalue, message.scale, message.pixelTextX, message.pixelTextY);
+                drawText(message.pixelTextX, message.pixelTextY, message.scale, message.textColor, message.textvalue);
             });
             break;
         case 'drawTriangle':
             renderInstructions.push(() => {
-                drawTriangle(canvasContext, tempCanvasContext, message.triangleColor, message.pixel1X, message.pixel1Y, message.pixel2X, message.pixel2Y, message.pixel3X, message.pixel3Y);
+                drawTriangle(message.pixel1X, message.pixel1Y, message.pixel2X, message.pixel2Y, message.pixel3X, message.pixel3Y, message.triangleColor);
             });
             break;
         case 'fillTriangle':
             renderInstructions.push(() => {
-                fillTriangle(canvasContext, tempCanvasContext, message.triangleColor, message.pixel1X, message.pixel1Y, message.pixel2X, message.pixel2Y, message.pixel3X, message.pixel3Y);
+                fillTriangle(message.pixel1X, message.pixel1Y, message.pixel2X, message.pixel2Y, message.pixel3X, message.pixel3Y, message.triangleColor);
             });
             break;
         case 'setRotation':
             renderInstructions.push(() => {
-                setRotation(canvasContext, tempCanvasContext, message.rotation);
+                setRotation(message.rotation);
             });
             break;
     }
