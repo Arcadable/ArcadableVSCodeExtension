@@ -16,7 +16,8 @@ export enum InstructionType {
     Clear,
     SetRotation,
 	RunSet,
-	DebugLog
+	DebugLog,
+	InstructionSet
 }
 export const instructionTypes = Object.keys(InstructionType)
 	.filter(key => isNaN(Number(InstructionType[key as any]))).map((value) => {

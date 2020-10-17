@@ -242,7 +242,6 @@ export class Emulator {
 					}
 				}
 			});
-
 			game.start();
 		}
 	}
@@ -319,6 +318,10 @@ export class Emulator {
 		);
 
 		const compileResult = new ArcadableCompiler(conf, docs).startCompile();
+		console.log(Object.keys(compileResult.game.values));
+		console.log(Object.keys(compileResult.game.instructions));
+		console.log(Object.keys(compileResult.game.instructionSets));
+
 		return compileResult;
 	}
 
