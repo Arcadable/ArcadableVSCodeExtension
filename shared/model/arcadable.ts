@@ -204,7 +204,7 @@ export class Arcadable {
 			acc +
 			this.makeLength(this.values[Number(curr)].ID.toString(2), 16) +
 			this.makeLength((this.values[Number(curr)] as EvaluationValue).evaluationOperator.toString(2), 7) +
-			(this.values[Number(curr)] as EvaluationValue).isStatic ? '1' : '0' +
+			((this.values[Number(curr)] as EvaluationValue).isStatic ? '1' : '0') +
 			this.makeLength((this.values[Number(curr)] as EvaluationValue).left.ID.toString(2), 16) +
 			this.makeLength((this.values[Number(curr)] as EvaluationValue).right.ID.toString(2), 16)
 			,
@@ -513,8 +513,7 @@ export class Arcadable {
 
     	const mainSet = this.instructionSets[this.mainInstructionSet];
 		const renderSet = this.instructionSets[this.renderInstructionSet];
-
-		tempBinaryString = this.makeLength((InstructionType.InstructionSet + 128).toString(2), 8)
+		tempBinaryString = this.makeLength((InstructionType.InstructionSet + 128).toString(2), 8) +
 			this.makeLength(mainSet.ID.toString(2), 16) +
 			this.makeLength(mainSet.size.toString(2), 16) +
 			mainSet.instructions.reduce((a, c) => a + this.makeLength(c.ID.toString(2), 16), '') +
