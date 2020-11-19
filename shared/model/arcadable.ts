@@ -24,11 +24,14 @@ import { NumberValue } from './values/_numberValue';
 import { PixelValue } from './values/pixelValue';
 import { SystemConfigValue } from './values/systemConfigValue';
 import { TextValue } from './values/textValue';
+import { ImageValue } from './values/imageValue';
+import { DataValue } from './values/dataValue';
 import { SetRotationInstruction } from './instructions/setRotationInstruction';
 import { RunSetInstruction } from './instructions/runSetInstruction';
 import { ValueArrayValueType } from './values/valueArrayValueType';
 import { NumberValueType } from './values/_numberValueType';
 import { DebugLogInstruction } from './instructions/debugLogInstruction';
+import { DrawImageInstruction } from './instructions/drawImageInstruction';
 
 const fp = require('ieee-float');
 
@@ -267,7 +270,35 @@ export class Arcadable {
 			binaryString += this.makeLength((tempBinaryString.length / 8).toString(2), 16);
 			binaryString += tempBinaryString;
 		}
-		
+
+		tempBinaryString = Object.keys(this.values).filter(k => this.values[Number(k)].type === ValueType.image).reduce((acc, curr) =>
+			acc +
+			this.makeLength(this.values[Number(curr)].ID.toString(2), 16) +
+			this.makeLength((this.values[Number(curr)] as ImageValue).data.ID.toString(2), 16) +
+			this.makeLength((this.values[Number(curr)] as ImageValue).width.ID.toString(2), 16) +
+			this.makeLength((this.values[Number(curr)] as ImageValue).height.ID.toString(2), 16) +
+			this.makeLength((this.values[Number(curr)] as ImageValue).keyColor.ID.toString(2), 16)
+			,
+			this.makeLength(ValueType.image.toString(2), 8)
+		);
+		if(tempBinaryString.length > 8) {
+			binaryString += this.makeLength((tempBinaryString.length / 8).toString(2), 16);
+			binaryString += tempBinaryString;
+		}
+	
+		tempBinaryString = Object.keys(this.values).filter(k => this.values[Number(k)].type === ValueType.data).reduce((acc, curr) =>
+			acc +
+			this.makeLength(this.values[Number(curr)].ID.toString(2), 16) +
+			this.makeLength((this.values[Number(curr)] as DataValue).size.toString(2), 16) +
+			((this.values[Number(curr)]as DataValue).data as number[]).reduce((a, c) => a + this.makeLength(c.toString(2), 8), '')
+			,
+			this.makeLength(ValueType.data.toString(2), 8)
+		);
+		if(tempBinaryString.length > 8) {
+			binaryString += this.makeLength((tempBinaryString.length / 8).toString(2), 16);
+			binaryString += tempBinaryString;
+		}
+	
 		tempBinaryString = Object.keys(this.values).filter(k => this.values[Number(k)].type === ValueType.systemPointer).reduce((acc, curr) =>
 			acc +
 			this.makeLength(this.values[Number(curr)].ID.toString(2), 16) +
@@ -448,6 +479,20 @@ export class Arcadable {
 			binaryString += tempBinaryString;
 		}
 
+		tempBinaryString = Object.keys(this.instructions).filter(k => this.instructions[Number(k)].instructionType === InstructionType.DrawImage).reduce((acc, curr) =>
+			acc +
+			this.makeLength(this.instructions[Number(curr)].ID.toString(2), 16) +
+			this.makeLength((this.instructions[Number(curr)] as DrawImageInstruction).xValue.ID.toString(2), 16) +
+			this.makeLength((this.instructions[Number(curr)] as DrawImageInstruction).yValue.ID.toString(2), 16) +
+			this.makeLength((this.instructions[Number(curr)] as DrawImageInstruction).imageValue.ID.toString(2), 16)
+			,
+			this.makeLength((InstructionType.DrawImage + 128).toString(2), 8)
+		);
+		if(tempBinaryString.length > 8) {
+			binaryString += this.makeLength((tempBinaryString.length / 8).toString(2), 16);
+			binaryString += tempBinaryString;
+		}
+
 		tempBinaryString = Object.keys(this.instructions).filter(k => this.instructions[Number(k)].instructionType === InstructionType.MutateValue).reduce((acc, curr) =>
 			acc +
 			this.makeLength(this.instructions[Number(curr)].ID.toString(2), 16) +
@@ -526,7 +571,7 @@ export class Arcadable {
 				this.makeLength(this.instructionSets[Number(curr)].size.toString(2), 16) +
 				this.instructionSets[Number(curr)].instructions.reduce((a, c) => a + this.makeLength(c.ID.toString(2), 16), '')
 				,
-				tempBinaryString
+				''
 			);
     	binaryString += this.makeLength((tempBinaryString.length / 8).toString(2), 16);
 		binaryString += tempBinaryString;

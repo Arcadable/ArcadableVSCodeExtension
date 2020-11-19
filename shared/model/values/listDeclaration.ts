@@ -28,13 +28,5 @@ export class ListDeclaration<T extends Value> extends ValueArrayValueType {
         return true;
     }
 
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            type: this.type,
-            values: this.values,
-            size: this.size,
-        });
-    }
+
 }

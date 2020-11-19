@@ -79,7 +79,7 @@
 			}
 		},
 		"type": {
-			"match": "(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*):(( )*?(Number|Analog|Digital|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List))",
+			"match": "(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*):(( )*?(Number|Analog|Digital|Image|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List))",
 			"captures": {
 				"1": {
 					"name": "variable"
@@ -90,7 +90,7 @@
 			}
 		},
 		"generic": {
-			"match": "<(( )*?(Number|Analog|Digital|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List))>",
+			"match": "<(( )*?(Number|Analog|Digital|Image|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List))>",
 			"captures": {
 				"3": {
 					"name": "support.type.primitive"

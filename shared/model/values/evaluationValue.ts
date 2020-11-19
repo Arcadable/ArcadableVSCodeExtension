@@ -139,15 +139,4 @@ export class EvaluationValue extends NumberValueType {
         return await this.get() !== 0;
     }
 
-    stringify() {
-      return JSON.stringify({
-          ID: this.ID,
-          name: this.name,
-          type: this.type,
-          evaluationOperator: this.evaluationOperator,
-          left: this.left,
-          right: this.right,
-          isStatic: this.isStatic
-      });
-  }
 }

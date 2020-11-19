@@ -50,16 +50,5 @@ export class DrawTextInstruction extends Instruction {
             });
         }];
     }
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            instructionType: this.instructionType,
-            colorValue: this.colorValue,
-            scale: this.scaleValue,
-            text: this.textValue,
-            xValue: this.xValue,
-            yValue: this.yValue,
-        });
-    }
+
 }

@@ -17,7 +17,8 @@ export enum InstructionType {
     SetRotation,
 	RunSet,
 	DebugLog,
-	InstructionSet
+	InstructionSet,
+	DrawImage
 }
 export const instructionTypes = Object.keys(InstructionType)
 	.filter(key => isNaN(Number(InstructionType[key as any]))).map((value) => {
@@ -46,6 +47,8 @@ export const instructionTypes = Object.keys(InstructionType)
 				return { viewValue: 'Fill triangle', codeValue: 'draw.fillTriangle(color, x1, y1, x2, y2, x3, y3);', value: Number(value) };
 			case InstructionType.DrawText:
 				return { viewValue: 'Draw text', codeValue: 'draw.drawText(color, size, text, x, y);', value: Number(value) };
+			case InstructionType.DrawImage:
+				return { viewValue: 'Draw image', codeValue: 'draw.drawImage(x, y, imageData);', value: Number(value) };
 			case InstructionType.Clear:
 				return { viewValue: 'Clear', codeValue: 'draw.clear;', value: Number(value) };
 			case InstructionType.SetRotation:
@@ -71,13 +74,6 @@ export abstract class Instruction extends LogicElement {
 
     abstract execute(): (() => Promise<any>)[];
 
-    stringify() {
-    	return JSON.stringify({
-    		ID: this.ID,
-    		name: this.name,
-    		instructionType: this.instructionType,
-    	});
-    }
 }
 export class InstructionPointer {
     ID: number;

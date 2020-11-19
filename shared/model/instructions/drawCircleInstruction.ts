@@ -43,15 +43,4 @@ export class DrawCircleInstruction extends Instruction {
         }];
     }
 
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            instructionType: this.instructionType,
-            colorValue: this.colorValue,
-            radiusValue: this.radiusValue,
-            xValue: this.xValue,
-            yValue: this.yValue,
-        });
-    }
 }

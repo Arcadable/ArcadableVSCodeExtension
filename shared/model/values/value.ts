@@ -10,7 +10,9 @@ export enum ValueType {
 	listDeclaration,
 	listValue,
     text,
-    evaluation,
+	evaluation,
+	image,
+	data
 }
 export const valueTypes = Object.keys(ValueType).filter(key => isNaN(Number(ValueType[key as any]))).map((value) => {
 	switch (Number(value)) {
@@ -32,6 +34,10 @@ export const valueTypes = Object.keys(ValueType).filter(key => isNaN(Number(Valu
 			return { viewValue: 'Text', codeValue: 'String', value: Number(value) };
 		case ValueType.evaluation:
 			return { viewValue: 'Evaluation', codeValue: 'Eval', value: Number(value) };
+		case ValueType.image:
+			return { viewValue: 'Image', codeValue: 'Image', value: Number(value) };
+		case ValueType.data:
+			return { viewValue: 'Data', codeValue: 'Data', value: Number(value) };
 		default:
 			return { viewValue: '', value: 0};
 	}
@@ -52,13 +58,6 @@ export abstract class Value extends LogicElement {
     abstract async set(newValue: any): Promise<void>;
     abstract async isTruthy(): Promise<boolean>;
 
-    stringify() {
-    	return JSON.stringify({
-    		ID: this.ID,
-    		name: this.name,
-    		type: this.type,
-    	});
-    }
 }
 
 export abstract class ValuePointer<T extends Value> {

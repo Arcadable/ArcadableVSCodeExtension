@@ -24,12 +24,5 @@ export class SetRotationInstruction extends Instruction {
             });
         }];
     }
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            instructionType: this.instructionType,
-            rotationValue: this.rotationValue,
-        });
-    }
+
 }

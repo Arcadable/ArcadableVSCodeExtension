@@ -26,12 +26,5 @@ export class DebugLogInstruction extends Instruction {
 			});
 		}];
     }
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            instructionType: this.instructionType,
-            logValue: this.logValue,
-        });
-    }
+
 }

@@ -28,14 +28,4 @@ export class TextValue<T extends NumberValueType> extends ValueArrayValueType {
     async isTruthy() {
         return this.size > 0;
     }
-
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            type: this.type,
-            value: this.values,
-            size: this.size
-        });
-    }
 }

@@ -747,3 +747,16 @@ function fillScreen(color) {
 function clear() {
   canvasContext.clearRect(0, 0, physicalWidth, physicalHeight);
 }
+
+function drawImage(x, y, width, height, keyColor, data) {
+  let dataPos = 0;
+  for(let yPos = 0; yPos < height; yPos++) {
+    for(let xPos = 0; xPos < width; xPos++) {
+      const color = (data[dataPos] << 16) + (data[dataPos + 1] << 8) + data[dataPos + 2];
+      dataPos = dataPos + 3;
+      if(color !== keyColor) {
+        drawPixel(xPos + x, yPos + y, color);
+      }
+    }
+  }
+}

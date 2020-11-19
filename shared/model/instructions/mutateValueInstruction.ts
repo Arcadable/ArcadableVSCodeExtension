@@ -25,13 +25,5 @@ export class MutateValueInstruction extends Instruction {
             await valueLeft.set(right);
         }];
     }
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            instructionType: this.instructionType,
-            leftValue: this.leftValue,
-            rightValue: this.rightValue,
-        });
-    }
+
 }

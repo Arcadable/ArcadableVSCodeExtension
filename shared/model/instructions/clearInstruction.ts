@@ -21,11 +21,4 @@ export class ClearInstruction extends Instruction {
         }];
     }
 
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            instructionType: this.instructionType,
-        });
-    }
 }

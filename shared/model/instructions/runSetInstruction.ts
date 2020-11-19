@@ -19,12 +19,5 @@ export class RunSetInstruction extends Instruction {
     execute(): (() => Promise<any>)[] {
         return this.set.execute();
     }
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            instructionType: this.instructionType,
-            set: this.set
-        });
-    }
+
 }

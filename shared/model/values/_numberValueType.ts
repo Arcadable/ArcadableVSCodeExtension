@@ -9,7 +9,7 @@ export class NumberValueTypePointer<T extends NumberValueType> extends ValuePoin
     getObject(): T {
         return this.game.values[this.ID] as unknown as T;
     }
-    async getValue(): Promise<any> {
+    async getValue(): Promise<number> {
         return await (this.game.values[this.ID] as unknown as T).get();
     }
 }

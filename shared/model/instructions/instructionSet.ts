@@ -21,14 +21,6 @@ export class InstructionSet extends LogicElement {
         );
     }
 
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            size: this.size,
-            instructions: this.instructions
-        });
-    }
 }
 export class InstructionSetPointer {
     ID!: number;

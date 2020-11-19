@@ -22,12 +22,5 @@ export class AnalogInputValue extends NumberValueType {
     async isTruthy() {
         return await this.get() !== 0;
     }
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            type: this.type,
-            index: this.index,
-        });
-    }
+
 }

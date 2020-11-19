@@ -55,6 +55,124 @@ export function ParseValueNumber(section: string, otherMatchWithType: RegExpMatc
 	return result;
 }
 
+export function ParseValueData(section: string, otherMatchWithType: RegExpMatchArray) {
+	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
+	const name = values[0];
+	const result: ValueParseResult = {
+		value: null,
+		errors: []
+	};
+	const stringMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Data( *)=( *)(("([^\"]*)")|('([^\']*)'))END_OF_SECTION$/g) as RegExpMatchArray;
+	if (stringMatch) {
+		const valueRaw = stringMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
+		const value = valueRaw.charAt(0) === '"' ? valueRaw.replace(/"/g, '') : valueRaw.replace(/'/g, '');
+
+		result.value = {
+			type: ValueType.data,
+			value: value,
+			name
+		};
+	} else {
+		result.errors.push({ error: 'Incorrect data path format or missing ";"', pos: otherMatchWithType[0].length });
+	}
+	return result;
+}
+
+export function ParseValueImage(section: string, otherMatchWithType: RegExpMatchArray) {
+	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
+	const name = values[0];
+	const result: ValueParseResult[] = [];
+	const main: ValueParseResult = {
+		value: null,
+		errors: []
+	};
+	const imageMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Image( *)=( *)\[( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(("([^\"]*)")|('([^\']*)')))( *)(( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))){3}( *)\]END_OF_SECTION$/g) as RegExpMatchArray;
+	if (imageMatch) {
+		const value = imageMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
+		const values = value.replace('[', '').replace(']', '').replace(/\s/g, '').split(',');
+		let data = values[0];
+		let width = values[1];
+		let height = values[2];
+		let keyColor = values[3];
+
+		const originalPathLength = data.length;
+		data = data.charAt(0) === '"' ? data.replace(/"/g, '') : data.replace(/'/g, '');
+		if(data.length !== originalPathLength) {
+			const subDataName = name + '-data';
+			const subDataValue: ValueParseResult = {
+				value: {
+					type: ValueType.data,
+					value: data,
+					name: subDataName
+				},
+				errors: []
+			};
+			data = subDataName;
+			result.push(subDataValue);
+		}
+
+		const parsedWidth = Number.parseInt(width);
+		if(!Number.isNaN(parsedWidth)) {
+			const subWidthName = name + '-width';
+			const subWidthValue: ValueParseResult = {
+				value: {
+					type: ValueType.number,
+					value: parsedWidth,
+					name: subWidthName
+				},
+				errors: []
+			};
+			width = subWidthName;
+			result.push(subWidthValue);
+		}
+
+		const parsedHeight = Number.parseInt(height);
+		if(!Number.isNaN(parsedHeight)) {
+			const subHeightName = name + '-height';
+			const subHeightValue: ValueParseResult = {
+				value: {
+					type: ValueType.number,
+					value: parsedHeight,
+					name: subHeightName
+				},
+				errors: []
+			};
+			height = subHeightName;
+			result.push(subHeightValue);
+		}
+
+		const parsedKeyColor = Number.parseInt(keyColor);
+		if(!Number.isNaN(parsedKeyColor)) {
+			const subKeyColorName = name + '-keyColor';
+			const subKeyColorValue: ValueParseResult = {
+				value: {
+					type: ValueType.number,
+					value: parsedKeyColor,
+					name: subKeyColorName
+				},
+				errors: []
+			};
+			keyColor = subKeyColorName;
+			result.push(subKeyColorValue);
+		}
+
+		main.value = {
+			type: ValueType.image,
+			value: {
+				data,
+				width,
+				height,
+				keyColor
+			},
+			name
+		};
+	} else {
+		main.errors.push({ error: 'Incorrect image declaration format (=[path, width, height, keyColor]) or missing ";"', pos: otherMatchWithType[0].length });
+	}
+	result.push(main);
+	return result;
+}
+
 export function ParseValueAnalog(section: string, otherMatchWithType: RegExpMatchArray) {
 	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
 	const name = values[0];
@@ -381,6 +499,9 @@ export function ParseValueListNumber(section: string, otherMatchWithType: RegExp
 	result.push(main);
 	return result;
 }
+
+//ParseValueListImage todo
+//ParseValueListData todo
 
 export function ParseValueListAnalog(section: string, otherMatchWithType: RegExpMatchArray) {
 	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
@@ -855,7 +976,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 			const debugMatch = section.substr(position).match(/^debug\.log/g) as RegExpMatchArray;
 
 			if (drawMatch) {
-				const drawMatchType = section.substr(position).match(/^draw\.(clear|(drawPixel|drawText|drawCircle|fillCircle|drawRect|fillRect|drawTriangle|fillTriangle|drawLine|setRotation))/g) as RegExpMatchArray;
+				const drawMatchType = section.substr(position).match(/^draw\.(clear|(drawPixel|drawText|drawCircle|drawImage|fillCircle|drawRect|fillRect|drawTriangle|fillTriangle|drawLine|setRotation))/g) as RegExpMatchArray;
 				if (drawMatchType) {
 					let drawInstruction: {
                         line: number;
@@ -897,6 +1018,17 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 								drawInstruction.params = params;
 							} else {
 								result.errors.push({ error: 'Unexpected draw.drawText format ("draw.drawText(color, scale, text, x, y)"), or missing ";"', pos: position + totalPosition + drawMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+							}
+							break;
+						}
+						case 'draw.drawImage': {
+							const drawImageMatch = section.substr(position).match(/^draw\.drawImage\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+							if (drawImageMatch) {
+								const params = drawImageMatch[0].replace(/\s/g, '').replace('draw.drawImage(', '').replace(')END_OF_SECTION', '').split(',');
+								drawInstruction.type = InstructionType.DrawImage;
+								drawInstruction.params = params;
+							} else {
+								result.errors.push({ error: 'Unexpected draw.drawImage format ("draw.drawImage(x, y, imageData)"), or missing ";"', pos: position + totalPosition + drawMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 							}
 							break;
 						}

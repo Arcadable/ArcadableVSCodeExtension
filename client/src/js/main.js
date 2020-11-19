@@ -146,6 +146,11 @@ window.addEventListener('message', event => {
                 drawText(message.pixelTextX, message.pixelTextY, message.scale, message.textColor, message.textvalue);
             });
             break;
+        case 'drawImage':
+            renderInstructions.push(() => {
+                drawImage(message.x, message.y, message.w, message.h, message.keyColor, message.data);
+            });
+            break;
         case 'drawTriangle':
             renderInstructions.push(() => {
                 drawTriangle(message.pixel1X, message.pixel1Y, message.pixel2X, message.pixel2Y, message.pixel3X, message.pixel3Y, message.triangleColor);

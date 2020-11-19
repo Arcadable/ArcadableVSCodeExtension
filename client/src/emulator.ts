@@ -317,10 +317,7 @@ export class Emulator {
 			0
 		);
 
-		const compileResult = new ArcadableCompiler(conf, docs).startCompile();
-		console.log(Object.keys(compileResult.game.values));
-		console.log(Object.keys(compileResult.game.instructions));
-		console.log(Object.keys(compileResult.game.instructionSets));
+		const compileResult = await new ArcadableCompiler(conf, docs).startCompile();
 
 		return compileResult;
 	}

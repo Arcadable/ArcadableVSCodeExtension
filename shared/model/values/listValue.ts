@@ -43,13 +43,4 @@ export class ListValue<T1 extends ValueArrayValueType, T2 = number | number[]> e
         return await v.getObject().isTruthy();
     }
 
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            type: this.type,
-            listValue: this.listValue,
-            listIndex: this.listIndex,
-        });
-    }
 }

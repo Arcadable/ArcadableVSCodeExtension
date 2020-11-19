@@ -30,14 +30,5 @@ export class RunConditionInstruction extends Instruction {
         }];
         
     }
-    stringify() {
-        return JSON.stringify({
-            ID: this.ID,
-            name: this.name,
-            instructionType: this.instructionType,
-            evaluationValue: this.evaluationValue,
-            successSet: this.successSet,
-            failSet: this.failSet
-        });
-    }
+
 }

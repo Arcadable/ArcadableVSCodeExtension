@@ -6,9 +6,10 @@ import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value,
 	DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction,
 	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction,
 	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, DebugLogInstruction, FunctionParseResult,
-	ValueParseResult } from 'arcadable-shared';
+	ValueParseResult, DrawImageInstruction, ImageValue, DataValue, NumberArrayValueTypePointer} from 'arcadable-shared';
 import { ValueArrayValueTypePointer, ValueArrayValueType } from 'arcadable-shared/out/model/values/valueArrayValueType';
 import { Console } from 'console';
+import { ImageValueType, ImageValueTypePointer } from 'arcadable-shared/out/model/values/imageValueType';
 
 export class ArcadableCompiler {
 	tempContent = '';
@@ -17,7 +18,7 @@ export class ArcadableCompiler {
 		this.compileResult = new CompileResult(this.config);
 	}
 
-	startCompile(): CompileResult {
+	async startCompile(): Promise<CompileResult> {
 		this.tempContent = '';
 		this.compileResult = new CompileResult(this.config);
 
@@ -68,7 +69,12 @@ export class ArcadableCompiler {
 		}[]);
 		this.compileResult.parseErrors = parseErrors;
 		if (parseErrors.length === 0) {
-			const parsedProgram = new ParsedProgram(parseResult);
+
+			Object.keys(parseResult)
+
+
+			const parsedProgram = new ParsedProgram();
+			await parsedProgram.init(parseResult);
 			this.compileResult.compileErrors.push(...parsedProgram.compileErrors);
 			if (this.compileResult.compileErrors.length === 0) {
 
@@ -134,8 +140,6 @@ export class ArcadableCompiler {
 
 		data.values.forEach((v, index) => {
 
-
-
 			let valueIndex = -1;
 			let mutatable = false;
 			if (v.type === ValueType.number && (v.value  + '').charAt(0) === '.') {
@@ -156,8 +160,6 @@ export class ArcadableCompiler {
 			}
 
 			if (data.instructionSets.findIndex(is => is.instructions.findIndex(i => i.type === InstructionType.MutateValue && watchForNames.findIndex(n => n === i.params[0]) !== -1) !== -1) === -1) {
-
-				
 				valueIndex = compressedValues.findIndex(vc => !vc.mutatable && vc.type === v.type && JSON.stringify(vc.value) === JSON.stringify(v.value));
 			} else {
 				mutatable = true;
@@ -308,6 +310,25 @@ export class ArcadableCompiler {
 								}
 								break;
 							}
+							case ValueType.image: {
+								if (isNaN(+v2.value.width) && v.linked.findIndex(l => l.name === v2.value.width) !== -1) {
+									v2.value.width = valueIndex.toString();
+									optimized = true;
+								}
+								if (isNaN(+v2.value.height) && v.linked.findIndex(l => l.name === v2.value.height) !== -1) {
+									v2.value.height = valueIndex.toString();
+									optimized = true;
+								}
+								if (isNaN(+v2.value.keyColor) && v.linked.findIndex(l => l.name === v2.value.keyColor) !== -1) {
+									v2.value.keyColor = valueIndex.toString();
+									optimized = true;
+								}
+								if (isNaN(+v2.value.data) && v.linked.findIndex(l => l.name === v2.value.data) !== -1) {
+									v2.value.data = valueIndex.toString();
+									optimized = true;
+								}
+								break;
+							}
 						}
 					}
 				});
@@ -394,6 +415,25 @@ export class ArcadableCompiler {
 							}
 							if (!isNaN(+v.value.y) && v.value.y === oldIndex) {
 								v.value.y = newIndex.toString();
+								optimized = true;
+							}
+							break;
+						}
+						case ValueType.image: {
+							if (!isNaN(+v.value.width) && v.value.width === oldIndex) {
+								v.value.width = newIndex.toString();
+								optimized = true;
+							}
+							if (!isNaN(+v.value.height) && v.value.height === oldIndex) {
+								v.value.height = newIndex.toString();
+								optimized = true;
+							}
+							if (!isNaN(+v.value.keyColor) && v.value.keyColor === oldIndex) {
+								v.value.keyColor = newIndex.toString();
+								optimized = true;
+							}
+							if (!isNaN(+v.value.data) && v.value.data === oldIndex) {
+								v.value.data = newIndex.toString();
 								optimized = true;
 							}
 							break;
@@ -517,6 +557,21 @@ export class ArcadableCompiler {
 			} else if (v.type === ValueType.pixelIndex) {
 				const values = [v.value.x, v.value.y] as string[];
 				data.compileErrors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
+			} else if (v.type === ValueType.image) {
+				const values = [v.value.width, v.value.height, v.value.keyColor] as string[];
+				data.compileErrors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
+
+				const dataValueIndex = data.values.findIndex(v2 => v2.name === v.value.data)
+				if (dataValueIndex === -1) {
+					data.compileErrors.push(this.referenceNotFoundError(v.file, v.line, v.pos, v.value.data));
+				} else if (data.values[dataValueIndex].type !== ValueType.data) {
+					data.compileErrors.push({
+						file: v.file,
+						line: v.line,
+						pos: v.pos,
+						error: 'Value "' + v.value.data + '" not of type "Data" cannot be used here.'
+					});
+				}
 			} else if (v.type === ValueType.evaluation) {
 				const values = [v.value.left, v.value.right] as string[];
 				data.compileErrors.push(...this.checkNumbericalReferences(values, data, v.file, v.line, v.pos));
@@ -584,6 +639,12 @@ export class ArcadableCompiler {
 						case InstructionType.DrawText: {
 							data.compileErrors.push(...this.checkNumbericalReferences(instruction.params.filter((p, i) => i !== 2), data, instruction.file, instruction.line, instruction.pos));
 							data.compileErrors.push(...this.checkListReferences([instruction.params[2]], data, instruction.file, instruction.line, instruction.pos));
+							break;
+						}
+						case InstructionType.DrawImage: {
+							data.compileErrors.push(...this.checkNumbericalReferences(instruction.params.filter((p, i) => i !== 2), data, instruction.file, instruction.line, instruction.pos));
+							data.compileErrors.push(...this.checkImageReferences([instruction.params[2]], data, instruction.file, instruction.line, instruction.pos));
+							break;
 						}
 						case InstructionType.DebugLog: {
 							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[0]);
@@ -615,12 +676,35 @@ export class ArcadableCompiler {
 			const valueIndex = data.values.findIndex(v2 => v2.name === v1)
 			if (valueIndex === -1) {
 				errors.push(this.referenceNotFoundError(file, line, pos, v1));
-			} else if (data.values[valueIndex].type === ValueType.listDeclaration || data.values[valueIndex].type === ValueType.text) {
+			} else if (
+				data.values[valueIndex].type === ValueType.listDeclaration ||
+				data.values[valueIndex].type === ValueType.text ||
+				data.values[valueIndex].type === ValueType.image ||
+				data.values[valueIndex].type === ValueType.data
+			) {
 				errors.push({
 					file: file,
 					line: line,
 					pos: pos,
-					error: 'Value "' + v1 + '" with type "List" or "String" cannot be used here.'
+					error: 'Value "' + v1 + '" with type "List", "String", "Image" or "Data" cannot be used here.'
+				});
+			}
+		});
+		return errors;
+	}
+
+	checkImageReferences(values: string[], data: ParsedProgram, file: string, line: number, pos: number) {
+		const errors = [];
+		values.forEach(v1 => {
+			const valueIndex = data.values.findIndex(v2 => v2.name === v1)
+			if (valueIndex === -1) {
+				errors.push(this.referenceNotFoundError(file, line, pos, v1));
+			} else if (data.values[valueIndex].type !== ValueType.image) {
+				errors.push({
+					file: file,
+					line: line,
+					pos: pos,
+					error: 'Value "' + v1 + '" not of type "Image" cannot be used here.'
 				});
 			}
 		});
@@ -680,7 +764,8 @@ export class ParsedProgram {
         pos: number;
 		file: string;
 		compressedIndex?: number;
-    }[] = [];
+	}[] = [];
+	data: {[key: string]: number[]} = {};
     instructionSets: {
         name: string;
         instructions: {
@@ -722,7 +807,9 @@ export class ParsedProgram {
 	}[] = [];
 	compileErrors: {file: string, line: number, pos: number, error: string}[] = [];
 
-	constructor(data: {[key: string]: ParsedFile}) {
+	constructor() {}
+
+	async init(data: {[key: string]: ParsedFile}) {
 		const functionParseResultExecutables: {
 			file: string,
 			executables: (() => FunctionParseResult[])[]
@@ -798,14 +885,37 @@ export class ParsedProgram {
 		});
 
 		if (valueParseResults && valueParseResults.length > 0) {
-			this.values.push(...valueParseResults.filter(v => !!v.parseResult && !!v.parseResult.value).map(v => ({
-				name: ((v.parseResult as ValueParseResult).value as any).name,
-				type: ((v.parseResult as ValueParseResult).value as any).type,
-				value: ((v.parseResult as ValueParseResult).value as any).value,
-				line: v.line,
-				pos: v.pos,
-				file: v.file
-			})));
+			this.values.push(...(await Promise.all(valueParseResults.filter(v => !!v.parseResult && !!v.parseResult.value).map(async v => {
+				let value = ((v.parseResult as ValueParseResult).value as any).value;
+				if(((v.parseResult as ValueParseResult).value as any).type === ValueType.data) {
+					const baseName = (v.file.match(/[^\/]*?\.arc/g) as RegExpMatchArray)[0];
+					const baseDir = v.file.replace(baseName, '');
+					let dataPath = baseDir + value;
+					let backMatch = dataPath.match(/[^\/]*?\/\.\.\//g);
+					while (backMatch) {
+						dataPath = dataPath.replace(/[^\/]*?\/\.\.\//g, '');
+						backMatch = dataPath.match(/[^\/]*?\/\.\.\//g);
+					}
+					value = dataPath;
+					if(!this.data[value]) {
+						const file = vscode.Uri.file(value);
+						try {
+							this.data[value] = Array.from((await vscode.workspace.fs.readFile(file)));
+						} catch(e) {
+							this.compileErrors.push({file: v.file, line: v.line, pos: v.pos, error: `Unable to read file ${value}`});
+						}
+					}
+	
+				}
+				return {
+					name: ((v.parseResult as ValueParseResult).value as any).name,
+					type: ((v.parseResult as ValueParseResult).value as any).type,
+					value,
+					line: v.line,
+					pos: v.pos,
+					file: v.file
+				}
+			}))));
 			this.compileErrors.push(
 				...valueParseResults
 					.filter(v => !!v.parseResult)
@@ -839,6 +949,7 @@ export class CompileResult {
 		this.compileErrors = [];
 		this.parseErrors = [];
 	}
+
 	
 	assignGameData(gameData: ParsedProgram) {
 		this.parsedProgram = gameData;
@@ -924,6 +1035,25 @@ export class CompileResult {
 						this.game
 					);
 				}
+				case ValueType.data: {
+					return new DataValue(
+						i,
+						gameData.data[v.value],
+						'',
+						this.game
+					);
+				}
+				case ValueType.image: {
+					return new ImageValue(
+						i,
+						new NumberArrayValueTypePointer<DataValue>(+v.value.data, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.width, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.height, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.keyColor, this.game),
+						'',
+						this.game
+					);
+				}
 			}
 		});
 		const instructions = gameData.compressedInstructions.map((inst, i) => {
@@ -960,6 +1090,16 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						'',
+						this.game
+					);
+				}
+				case InstructionType.DrawImage : {
+					return new DrawImageInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new ImageValueTypePointer<ImageValueType>(+inst.params[2], this.game),
 						'',
 						this.game
 					);
