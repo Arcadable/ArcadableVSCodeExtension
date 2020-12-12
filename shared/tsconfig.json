@@ -9,9 +9,9 @@
 		"outDir": "out",
 		"rootDirs": [
             "src"
-		],
+		]
 	},
 	"include": ["src"],
-	"exclude": ["node_modules"]
+	"exclude": ["node_modules", "export"]
 }
 

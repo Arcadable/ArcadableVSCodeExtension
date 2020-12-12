@@ -54,9 +54,9 @@ export abstract class Value extends LogicElement {
     	super(ID, name, game);
     }
 
-    abstract async get(): Promise<any>;
-    abstract async set(newValue: any): Promise<void>;
-    abstract async isTruthy(): Promise<boolean>;
+    abstract get(): Promise<any>;
+    abstract set(newValue: any): Promise<void>;
+    abstract isTruthy(): Promise<boolean>;
 
 }
 
@@ -68,5 +68,5 @@ export abstract class ValuePointer<T extends Value> {
     	this.game = game;
     }
     abstract getObject(): T;
-    abstract async getValue(): Promise<any>;
+    abstract getValue(): Promise<any>;
 }

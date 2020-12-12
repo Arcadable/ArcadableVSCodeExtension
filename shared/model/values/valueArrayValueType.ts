@@ -10,9 +10,9 @@ export abstract class ValueArrayValueType extends Value {
     ) {
         super(ID, type, name, game);
     }
-    abstract async get(): Promise<ValuePointer<Value>[]>;
-    abstract async set(newValue: ValuePointer<Value>[]): Promise<void>;
-    abstract async isTruthy(): Promise<boolean>;
+    abstract get(): Promise<ValuePointer<Value>[]>;
+    abstract set(newValue: ValuePointer<Value>[]): Promise<void>;
+    abstract isTruthy(): Promise<boolean>;
 }
 
 export class ValueArrayValueTypePointer<T extends ValueArrayValueType> extends ValuePointer<T> {

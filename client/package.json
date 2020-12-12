@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "arcadable-shared": "file:../shared",
-    "vscode-languageclient": "^6.1.3",
-    "rxjs": "^6.5.5"
+    "rxjs": "^6.5.5",
+    "vscode-languageclient": "^6.1.3"
   },
   "devDependencies": {
     "@types/vscode": "1.43.0"

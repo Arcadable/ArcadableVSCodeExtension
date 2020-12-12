@@ -1,8 +1,8 @@
 import { Value, ValuePointer } from './value';
 export abstract class ImageValueType extends Value {
-    abstract async get(): Promise<{data: number[], width: number, height: number, keyColor: number}>;
-    abstract async set(newValue: {data: number[], width: number, height: number, keyColor: number}): Promise<void>;
-    abstract async isTruthy(): Promise<boolean>;
+    abstract get(): Promise<{data: number[], width: number, height: number, keyColor: number}>;
+    abstract set(newValue: {data: number[], width: number, height: number, keyColor: number}): Promise<void>;
+    abstract isTruthy(): Promise<boolean>;
 }
 
 export class ImageValueTypePointer<T extends ImageValueType> extends ValuePointer<T> {

@@ -2,10 +2,11 @@ import * as vscode from 'vscode';
 import { Subscription, Subject, BehaviorSubject, zip } from 'rxjs';
 import { auditTime } from 'rxjs/operators'
 import { Arcadable, SystemConfig } from 'arcadable-shared/';
-import path = require('path');
-import fs = require('fs');
 import { ArcadableCompiler, CompileResult } from './compiler';
 
+import { exportArcadable} from 'arcadable-shared/out/model/exportArcadable'
+import path = require('path');
+import fs = require('fs');
 export class Emulator {
 	getPixelCallback: (color: number) => {};
 	instructionSubscription: Subscription;
@@ -56,7 +57,7 @@ export class Emulator {
 							(async () => {
 								this.log.append('Exported Arcadable script');
 								const startTime = process.hrtime();
-								const bytes = this.compileResult.game.export();
+								const bytes = exportArcadable(this.compileResult.game);
 								let path = this.exportPath;
 								if (path.charAt(path.length - 1) === '/') {
 									path = path.substr(0, path.length - 2);
@@ -299,7 +300,7 @@ export class Emulator {
 
 
 		await Promise.all(files.map((file) => 
-			new Promise((res, rej) => {
+			new Promise<void>((res, rej) => {
 				vscode.workspace.openTextDocument(file).then(fileOpened => {
 					docs[file.path] = fileOpened;
 					res();
