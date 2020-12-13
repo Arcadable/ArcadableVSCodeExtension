@@ -92,7 +92,14 @@ export class ArcadableCompiler {
 							pos: 0,
 							error: 'Cannot find "Main" function'
 						})
-					} 
+					} else if(gameData.compressedInstructionSets[mainInstructionSet].async) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Main function cannot be asynchronous'
+						})
+					}
 					if (renderInstructionSet === -1) {
 						this.compileResult.compileErrors.push({
 							file: '',
@@ -100,7 +107,14 @@ export class ArcadableCompiler {
 							pos: 0,
 							error: 'Cannot find "Render" function'
 						})
-					} 
+					} else if(gameData.compressedInstructionSets[renderInstructionSet].async) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Render function cannot be asynchronous'
+						})
+					}
 					
 					if (mainInstructionSet !== -1 && renderInstructionSet !== -1) {
 						this.compileResult.assignGameData(gameData);
@@ -181,6 +195,7 @@ export class ArcadableCompiler {
 		let compressedInstructions: {
 			type: InstructionType;
 			params: string[];
+			await: boolean;
 			linked: {
 				line: number;
 				pos: number;
@@ -189,6 +204,7 @@ export class ArcadableCompiler {
 		}[] = [];
 		let compressedInstructionSets: {
 			instructions: number[];
+			async: boolean;
 			linked: {
 				name: string;
 			}[];
@@ -196,11 +212,16 @@ export class ArcadableCompiler {
 		data.instructionSets.forEach((is, index) => {
 			const instructions: number[] = [];
 			is.instructions.forEach((i, index2) => {
-				let instructionIndex = compressedInstructions.findIndex(ic => ic.type === i.type && JSON.stringify(ic.params) === JSON.stringify(i.params));
+				let instructionIndex = compressedInstructions.findIndex(ic =>
+					ic.type === i.type &&
+					JSON.stringify(ic.params) === JSON.stringify(i.params) &&
+					ic.await === i.await
+				);
 				if (instructionIndex === -1) {
 					instructionIndex = compressedInstructions.push({
 						type: i.type,
 						params: i.params,
+						await: i.await,
 						linked: []
 					}) - 1;
 				}
@@ -210,17 +231,19 @@ export class ArcadableCompiler {
 			})
 
 			let instructionSetIndex = compressedInstructionSets.findIndex(isc => {
-				if (isc.instructions === instructions) return true;
+				if (isc.instructions === instructions && isc.async === is.async) return true;
 				if (isc.instructions == null || instructions == null) return false;
 				if (isc.instructions.length != instructions.length) return false;		  
 				for (var i = 0; i < isc.instructions.length; ++i) {
 				  if (isc.instructions[i] !== instructions[i]) return false;
 				}
+				if(isc.async !== is.async) return false;
 				return true;
 			});
 			if (instructionSetIndex === -1) {
 				instructionSetIndex = compressedInstructionSets.push({
 					instructions,
+					async: is.async,
 					linked: []
 				}) - 1;
 			}
@@ -446,7 +469,8 @@ export class ArcadableCompiler {
 			compressedInstructions = compressedInstructions.reduce((acc, curr, oldIndex) => {
 				const existingIndex = acc.findIndex(existing =>
 					existing.type === curr.type &&
-					JSON.stringify(existing.params) === JSON.stringify(curr.params)
+					JSON.stringify(existing.params) === JSON.stringify(curr.params) &&
+					existing.await === curr.await
 				);
 				if (existingIndex !== -1) {
 					instrIndexChanges[oldIndex] = existingIndex;
@@ -459,6 +483,7 @@ export class ArcadableCompiler {
 			}, [] as {
 				type: InstructionType;
 				params: string[];
+				await: boolean;
 				linked: {
 					line: number;
 					pos: number;
@@ -479,7 +504,8 @@ export class ArcadableCompiler {
 			const instrSetIndexChanges = {};
 			compressedInstructionSets = compressedInstructionSets.reduce((acc, curr, oldIndex) => {
 				const existingIndex = acc.findIndex(existing =>
-					JSON.stringify(existing.instructions) === JSON.stringify(curr.instructions)
+					JSON.stringify(existing.instructions) === JSON.stringify(curr.instructions) &&
+					existing.async === curr.async
 				);
 				if (existingIndex !== -1) {
 					instrSetIndexChanges[oldIndex] = existingIndex;
@@ -491,6 +517,7 @@ export class ArcadableCompiler {
 				return existingIndex !== -1 ? acc : [...acc, curr];
 			}, [] as {
 				instructions: number[];
+				async: boolean;
 				linked: {
 					name: string;
 				}[];
@@ -602,6 +629,21 @@ export class ArcadableCompiler {
 				}
 
 				i.instructions.forEach(instruction => {
+
+					if (instruction.await &&
+						(
+							instruction.type !== InstructionType.RunCondition &&
+							instruction.type !== InstructionType.RunSet
+						)
+					) {
+						data.compileErrors.push({
+							file: instruction.file,
+							line: instruction.line,
+							pos: instruction.pos,
+							error: 'Instruction type is not awaitable'
+						});
+					}
+
 					switch (instruction.type) {
 						case InstructionType.DrawCircle: 
 						case InstructionType.DrawLine: 
@@ -629,11 +671,29 @@ export class ArcadableCompiler {
 							break;
 						}
 						case InstructionType.RunCondition: {
-							data.compileErrors.push(...this.checkInstructionSetReferences([instruction.params[1], instruction.params[1]], data, instruction.file, instruction.line, instruction.pos));
+							data.compileErrors.push(...this.checkInstructionSetReferences([instruction.params[1], instruction.params[1]], instruction.await, data, instruction.file, instruction.line, instruction.pos));
+							if(instruction.await && !i.async) {
+								data.compileErrors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Cannot use await in block that is not asynchronous'
+								});
+							}
+							
 							break;
 						} 
 						case InstructionType.RunSet: {
-							data.compileErrors.push(...this.checkInstructionSetReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
+							data.compileErrors.push(...this.checkInstructionSetReferences(instruction.params, instruction.await, data, instruction.file, instruction.line, instruction.pos));
+							if(instruction.await && !i.async) {
+								data.compileErrors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Cannot use await in block that is not asynchronous'
+								});
+							}
+							
 							break;
 						}
 						case InstructionType.DrawText: {
@@ -729,7 +789,7 @@ export class ArcadableCompiler {
 		return errors;
 	}
 
-	checkInstructionSetReferences(instructionSets: string[], data: ParsedProgram, file: string, line: number, pos: number) {
+	checkInstructionSetReferences(instructionSets: string[], await: boolean, data: ParsedProgram, file: string, line: number, pos: number) {
 		const errors = [];
 		instructionSets.forEach(i1 => {
 			const instructionSetIndex = data.instructionSets.findIndex(i2 => i2.name === i1)
@@ -739,6 +799,13 @@ export class ArcadableCompiler {
 					line: line,
 					pos: pos,
 					error: 'Function with identifier "' + i1 + '" cannot be found.'
+				});
+			} else if(await && !data.instructionSets[instructionSetIndex].async) {
+				errors.push({
+					file: file,
+					line: line,
+					pos: pos,
+					error: 'Cannot await synchronous function "' + i1 + '".'
 				});
 			}
 		});
@@ -767,7 +834,8 @@ export class ParsedProgram {
 	}[] = [];
 	data: {[key: string]: number[]} = {};
     instructionSets: {
-        name: string;
+		name: string;
+		async: boolean;
         instructions: {
             line: number;
             pos: number;
@@ -775,6 +843,7 @@ export class ParsedProgram {
             type: InstructionType;
 			params: string[];
 			compressedIndex?: number;
+			await: boolean;
 		}[];
 		compressedIndex?: number;
     }[] = [];
@@ -792,7 +861,8 @@ export class ParsedProgram {
     }[] = [];
     compressedInstructions: {
         type: InstructionType,
-        params: string[],
+		params: string[],
+		await: boolean,
         linked:{
             line: number;
             pos: number;
@@ -801,6 +871,7 @@ export class ParsedProgram {
     }[] = [];
     compressedInstructionSets: {
 		instructions: number[],
+		async: boolean;
 		linked: {
 			name: string;
 		}[]
@@ -837,12 +908,14 @@ export class ParsedProgram {
 				this.instructionSets.push(
 					...functions.map(f => ({
 						name: f.name,
+						async: f.async,
 						instructions: f.instructions.map(i => ({
 							line: i.line,
 							pos: i.pos,
 							file: e.file,
 							type: i.type,
-							params: i.params
+							params: i.params,
+							await: i.await
 						}))
 					}))
 				);
@@ -1059,7 +1132,7 @@ export class CompileResult {
 		const instructions = gameData.compressedInstructions.map((inst, i) => {
 			switch(inst.type) {
 				case InstructionType.Clear : {
-					return new ClearInstruction(i, '', this.game);
+					return new ClearInstruction(i, '', this.game, inst.await);
 				}
 				case InstructionType.DrawCircle : {
 					return new DrawCircleInstruction(
@@ -1069,7 +1142,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.DrawLine : {
@@ -1081,7 +1155,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.DrawPixel : {
@@ -1091,7 +1166,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.DrawImage : {
@@ -1101,7 +1177,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
 						new ImageValueTypePointer<ImageValueType>(+inst.params[2], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.DrawRect : {
@@ -1113,7 +1190,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.DrawText : {
@@ -1125,7 +1203,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.DrawTriangle : {
@@ -1139,7 +1218,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[5], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[6], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.FillCircle : {
@@ -1150,7 +1230,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.FillRect : {
@@ -1162,7 +1243,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.FillTriangle : {
@@ -1176,7 +1258,8 @@ export class CompileResult {
 						new NumberValueTypePointer<NumberValueType>(+inst.params[5], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[6], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.MutateValue : {
@@ -1186,7 +1269,8 @@ export class CompileResult {
 							new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[0], this.game),
 							new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[1], this.game),
 							'',
-							this.game
+							this.game,
+							inst.await
 						);
 					} else if (values[+inst.params[0]].type === ValueType.listDeclaration) {
 						return new MutateValueInstruction(
@@ -1194,7 +1278,8 @@ export class CompileResult {
 							new ValueArrayValueTypePointer<ValueArrayValueType>(+inst.params[0], this.game),
 							new ValueArrayValueTypePointer<ValueArrayValueType>(+inst.params[1], this.game),
 							'',
-							this.game
+							this.game,
+							inst.await
 						);
 					} else {
 						return new MutateValueInstruction(
@@ -1202,7 +1287,8 @@ export class CompileResult {
 							new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
 							new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
 							'',
-							this.game
+							this.game,
+							inst.await
 						);
 					}
 
@@ -1214,7 +1300,8 @@ export class CompileResult {
 						new InstructionSetPointer(+inst.params[1], this.game),
 						inst.params[2].length > 0 ? new InstructionSetPointer(+inst.params[2], this.game) : null,
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.RunSet : {
@@ -1222,7 +1309,8 @@ export class CompileResult {
 						i,
 						new InstructionSetPointer(+inst.params[0], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.SetRotation : {
@@ -1230,7 +1318,8 @@ export class CompileResult {
 						i,
 						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 				case InstructionType.DebugLog : {
@@ -1238,7 +1327,8 @@ export class CompileResult {
 						i,
 						new NumberValueTypePointer<Value>(+inst.params[0], this.game),
 						'',
-						this.game
+						this.game,
+						inst.await
 					);
 				}
 			}
@@ -1249,6 +1339,7 @@ export class CompileResult {
 			is.instructions.map(inst => 
 				new InstructionPointer(inst, this.game)
 			),
+			is.async,
 			'',
 			this.game
 		));

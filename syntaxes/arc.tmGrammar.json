@@ -79,7 +79,7 @@
 			}
 		},
 		"type": {
-			"match": "(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*):(( )*?(Number|Analog|Digital|Image|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List))",
+			"match": "(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*):(( )*?(Number|Analog|Digital|Image|Pixel|Config|String|Eval|AsyncFunction|Function|ListValue|List))",
 			"captures": {
 				"1": {
 					"name": "variable"
@@ -90,7 +90,7 @@
 			}
 		},
 		"generic": {
-			"match": "<(( )*?(Number|Analog|Digital|Image|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List))>",
+			"match": "<(( )*?(Number|Analog|Digital|Image|Pixel|Config|String|Eval|AsyncFunction|Function|ListValue|List))>",
 			"captures": {
 				"3": {
 					"name": "support.type.primitive"
@@ -168,18 +168,21 @@
 			}
 		},
 		"execute": {
-			"match": "(execute)(\\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)\\))",
+			"match": "(await( +?))?(execute)(\\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)\\))",
 			"captures": {
 				"1": {
+					"name": "keyword.control"
+				},
+				"3": {
 					"name": "entity.name.function"
 				},
-				"4": {
+				"6": {
 					"name": "variable"
 				}
 			}
 		},
 		"debug": {
-			"match": "(debug\\.log)\\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\\.([0-9]+))?)|(\\.([0-9]+))))( *)\\)",
+			"match": "(log)\\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\\.([0-9]+))?)|(\\.([0-9]+))))( *)\\)",
 			"captures": {
 				"1": {
 					"name": "entity.name.function"

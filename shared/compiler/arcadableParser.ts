@@ -49,7 +49,7 @@ export class ArcadableParser {
     					})));
     				}
     			} else if (otherMatch) {
-    				const otherMatchWithType = section.substr(position).match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)(Number|Analog|Image|Data|Digital|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List<( *)(Number|Analog|Image|Data|Digital|Pixel|Config|String|Eval|StaticEval)( *)>)/g) as RegExpMatchArray;
+    				const otherMatchWithType = section.substr(position).match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)(Number|Analog|Image|Data|Digital|Pixel|Config|String|Eval|AsyncFunction|Function|ListValue|List<( *)(Number|Analog|Image|Data|Digital|Pixel|Config|String|Eval)( *)>)/g) as RegExpMatchArray;
     				if (otherMatchWithType) {
     					const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
     					const type = values[1];
@@ -147,7 +147,13 @@ export class ArcadableParser {
     								file: fileName
     							})));
     							break;
-    						}
+							}
+							case 'AsyncFunction': {
+								const res = GetParseFunctionExecutable(section.substr(position), otherMatchWithType, lineNumber, lines, true);
+    							functionParseResults.push(res);
+    							parsedLinesCount = res.parsedCount;
+    							break;
+							}
     						case 'Function': {
 								const res = GetParseFunctionExecutable(section.substr(position), otherMatchWithType, lineNumber, lines);
     							functionParseResults.push(res);

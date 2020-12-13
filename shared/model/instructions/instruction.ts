@@ -1,3 +1,4 @@
+import { Executable } from './../callStack';
 import { Arcadable } from '../arcadable';
 import { LogicElement } from '../logicElement';
 
@@ -56,7 +57,7 @@ export const instructionTypes = Object.keys(InstructionType)
 			case InstructionType.RunSet:
 				return { viewValue: 'Run instructionset', codeValue: 'execute();', value: Number(value) };
 			case InstructionType.DebugLog:
-				return { viewValue: 'Log value', codeValue: 'debug.log(value);', value: Number(value) }
+				return { viewValue: 'Log value', codeValue: 'log(value);', value: Number(value) }
 			default:
 				return { viewValue: '', value: 0};
 		}
@@ -65,14 +66,15 @@ export abstract class Instruction extends LogicElement {
 
     constructor(
     	ID: number,
-    	public instructionType: InstructionType,
+		public instructionType: InstructionType,
     	name: string,
-    	game: Arcadable
+    	game: Arcadable,
+		public await: boolean,
     ) {
     	super(ID, name, game);
     }
 
-    abstract execute(): (() => Promise<any>)[];
+    abstract getExecutables(async: boolean): Executable[];
 
 }
 export class InstructionPointer {
@@ -81,8 +83,11 @@ export class InstructionPointer {
     constructor(ID: number, game: Arcadable) {
     	this.ID = ID;
     	this.game = game;
-    }
-    execute(): (() => Promise<any>)[] {
-    	return this.game.instructions[this.ID].execute();
+	}
+	await(): boolean {
+		return this.game.instructions[this.ID].await;
+	}
+    getExecutables(async: boolean): Executable[] {
+    	return this.game.instructions[this.ID].getExecutables(async);
     }
 }

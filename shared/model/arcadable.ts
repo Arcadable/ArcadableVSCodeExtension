@@ -1,4 +1,6 @@
+import { exec } from 'child_process';
 import { Subject, timer } from 'rxjs';
+import { CallStack, Executable } from './callStack';
 import { Instruction } from './instructions/instruction';
 import { InstructionSet } from './instructions/instructionSet';
 import { SystemConfig } from './systemConfig';
@@ -18,7 +20,10 @@ export class Arcadable {
 
 	prevMainMillis = 0;
 	prevRenderMillis = 0;
-    startMillis = 0;
+	startMillis = 0;
+	
+	mainCallStack: CallStack = new CallStack();
+	renderCallStack: CallStack = new CallStack();
 
     constructor(
     	systemConfig: SystemConfig
@@ -47,6 +52,8 @@ export class Arcadable {
     }
 
     start() {
+		this.mainCallStack = new CallStack(10000);
+		this.renderCallStack = new CallStack(10000);
 
     	Object.keys(this.values).forEach(k => {
     		if ((this.values[Number(k)] as Value).type === ValueType.evaluation) {
@@ -95,34 +102,57 @@ export class Arcadable {
     	const mainInstructionSet = this.instructionSets[
     		this.mainInstructionSet
 		] as InstructionSet;
-
-		const executables = mainInstructionSet.instructions.map((instructionPointer) =>
-			(async () => await this.execute(async () => await instructionPointer.execute()))
-		);
-		await executables.reduce(async (p, fn) => { await p; return fn() }, Promise.resolve())
-
+		this.mainCallStack.pushfront(...mainInstructionSet.getExecutables());
+		/*.instructions.reduce((cs, instructionPointer) => {
+			cs.pushback(...instructionPointer.getExecutables(false));
+			return cs;
+		}, this.mainCallStack);*/
+		this.processCallStack(this.mainCallStack);
 	}
+
+	private async processCallStack(callStack: CallStack) {
+		if(callStack.size() > 0) {
+			const executable = callStack.pop();
+			if(executable) {
+				let newExecutables = (await executable.action()).map(e => executable.parentAwait ? e.withParentAwait(executable.parentAwait) : e);
+				if(newExecutables.length > 0) {
+					if(executable.async) {
+						if (executable.awaiting.length > 0) {
+							const waitFor = new Executable(async () => executable.awaiting.map(e => executable.parentAwait ? e.withParentAwait(executable.parentAwait) : e), true, [], executable.parentAwait);
+							newExecutables = newExecutables.map(e => e.withParentAwait(waitFor))
+							callStack.pushfront(...newExecutables);
+							if(executable.parentAwait) {
+								callStack.pushinfrontof(executable.parentAwait, waitFor);
+							} else {
+								callStack.pushback(waitFor);
+							}
+						} else {
+							callStack.pushfront(...newExecutables);
+						}
+					} else {
+						callStack.pushfront(...newExecutables);
+					}
+				}
+			}
+			this.processCallStack(callStack);
+		}
+	}
+
 	private async doRenderStep() {
     	const renderInstructionSet = this.instructionSets[
     		this.renderInstructionSet
 		] as InstructionSet;
 
-		const executables = renderInstructionSet.instructions.map((instructionPointer) =>
-			(async () => await this.execute(async () => await instructionPointer.execute()))
-		);
-		await executables.reduce(async (p, fn) => { await p; return fn() }, Promise.resolve())
+		renderInstructionSet.instructions.reduce((cs, instructionPointer) => {
+			cs.pushfront(...instructionPointer.getExecutables(false));
+			return cs;
+		}, this.renderCallStack);
+		this.renderCallStack.pushback(new Executable(async () => {
+			this.instructionEmitter.next({command: 'renderDone'});
+			return [];
+		}, false, [], null));
 
-		this.instructionEmitter.next({command: 'renderDone'})
+		this.processCallStack(this.renderCallStack);
     }
-
-
-    async execute(action: () => Promise<(() => any)[]>) {
-		const actions = (await action()) || [];
-		const executables = actions.map((a, i) =>
-			(async () => await this.execute(a))
-		);
-		await executables.reduce(async (p, fn) => { await p; return fn() }, Promise.resolve())
-    }
-
 
 }

@@ -1,4 +1,5 @@
 import { Arcadable } from '../arcadable';
+import { Executable } from '../callStack';
 import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 import { Instruction, InstructionType } from './instruction';
 
@@ -12,15 +13,16 @@ export class FillRectInstruction extends Instruction {
         public x2Value: NumberValueTypePointer<NumberValueType>,
         public y2Value: NumberValueTypePointer<NumberValueType>,
         name: string,
-        game: Arcadable
+        game: Arcadable,
+		public await: boolean,
     ) {
-        super(ID, InstructionType.FillRect, name, game);
+        super(ID, InstructionType.FillRect, name, game, await);
       
     }
 
 
-    execute(): (() => Promise<any>)[] {
-        return [async () => {
+    getExecutables(async: boolean): Executable[] {
+        return [new Executable(async () => {
             const [
                 topLeftDrawX,
                 topLeftDrawY,
@@ -45,7 +47,8 @@ export class FillRectInstruction extends Instruction {
                 height,
                 drawRectColor,
             });
-        }];
+            return [];
+        }, async, [], null)];
     }
 
 }

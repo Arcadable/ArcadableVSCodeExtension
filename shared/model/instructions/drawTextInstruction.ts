@@ -4,6 +4,7 @@ import { TextValue } from '../values/textValue';
 import { Instruction, InstructionType } from './instruction';
 import { ValueArrayValueTypePointer } from '../values/valueArrayValueType';
 import { ValuePointer, Value } from '../values/value';
+import { Executable } from '../callStack';
 
 export class DrawTextInstruction extends Instruction {
 
@@ -15,15 +16,16 @@ export class DrawTextInstruction extends Instruction {
         public xValue: NumberValueTypePointer<NumberValueType>,
         public yValue: NumberValueTypePointer<NumberValueType>,
         name: string,
-        game: Arcadable
+        game: Arcadable,
+		public await: boolean,
     ) {
-        super(ID, InstructionType.DrawText, name, game);
+        super(ID, InstructionType.DrawText, name, game, await);
     }
 
 
-    execute(): (() => Promise<any>)[] {
+    getExecutables(async: boolean): Executable[] {
 
-        return [async () => {
+        return [new Executable(async () => {
             let [
                 pixelTextX,
                 pixelTextY,
@@ -48,7 +50,8 @@ export class DrawTextInstruction extends Instruction {
                 textColor,
                 textvalue,
             });
-        }];
+            return [];
+        }, async, [], null)];
     }
 
 }

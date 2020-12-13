@@ -1,4 +1,5 @@
 import { Arcadable } from '../arcadable';
+import { Executable } from '../callStack';
 import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 import { Instruction, InstructionType } from './instruction';
 
@@ -12,14 +13,15 @@ export class FillCircleInstruction extends Instruction {
         public xValue: NumberValueTypePointer<NumberValueType>,
         public yValue: NumberValueTypePointer<NumberValueType>,
         name: string,
-        game: Arcadable
+        game: Arcadable,
+		public await: boolean,
     ) {
-        super(ID, InstructionType.FillCircle, name, game);
+        super(ID, InstructionType.FillCircle, name, game, await);
     }
 
 
-    execute(): (() => Promise<any>)[] {
-        return [async () => {
+    getExecutables(async: boolean): Executable[] {
+        return [new Executable(async () => {
             const [
                 color,
                 radius,
@@ -39,7 +41,8 @@ export class FillCircleInstruction extends Instruction {
                 centerX,
                 centerY
             });
-        }];
+            return [];
+        }, async, [], null)];
     }
 
 }

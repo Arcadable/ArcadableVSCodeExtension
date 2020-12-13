@@ -63,7 +63,7 @@ draw.clear;
 draw.setRotation(rotation);
 
 // Writing to console
-debug.log(value);
+log(value);
 
 // Conditionals
 if (varName) {
