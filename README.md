@@ -45,6 +45,12 @@ varName: List<Number> = [otherVarName, 2, 2.5];
 // Truthy if value at list position is truthy.
 varName: ListValue = myList[1];
 varName: ListValue = myList[otherVarName];
+
+// Image value. Represents image data.
+// the asset should be raw rgb values. In gimp, export the image as "Raw Image Data", in the "Export as.." dialog file type selection.
+// Image with/height/color are all number values.
+varName: Image = ['assets/myImage.data', imageWidth, imageHeight, imageColor];
+
 ```
 
 Implemented instructions: 
@@ -59,6 +65,7 @@ draw.fillCircle(color, radius, x, y);
 draw.drawTriangle(color, x1, y1, x2, y2, x3, y3);
 draw.fillTriangle(color, x1, y1, x2, y2, x3, y3);
 draw.drawText(color, size, text, x, y);
+draw.drawImage(myImage, x, y);
 draw.clear;
 draw.setRotation(rotation);
 
@@ -74,6 +81,9 @@ if (varName) {
 
 // Executing functions
 execute(myFunction);
+
+// await an async function
+await execute(myAsyncFunction);
 
 // Mutating values
 // Mutatable values: Number, ListValue (pointing to a mutable value), Pixel, String
@@ -96,10 +106,18 @@ render: Function {
 
 }
 
+
 // Any other functions can be defined in the same way.
 myFunction: Function {
 
 }
+
+// Async functions are also supported
+// Render and Main cannot be async
+myFunction: AsyncFunction {
+
+}
+
 ```
 
 All values and functions defined in any imported file are accessible in any file of the program (all values and functions are global, also across files).
