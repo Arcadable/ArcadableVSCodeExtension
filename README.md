@@ -85,6 +85,9 @@ execute(myFunction);
 // await an async function
 await execute(myAsyncFunction);
 
+// wait for an amount of milliseconds
+wait(myNumber);
+
 // Mutating values
 // Mutatable values: Number, ListValue (pointing to a mutable value), Pixel, String
 varName = otherVarName * 2;
