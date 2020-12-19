@@ -20,7 +20,7 @@ export class FillCircleInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
         return [new Executable(async () => {
             const [
                 color,
@@ -42,7 +42,7 @@ export class FillCircleInstruction extends Instruction {
                 centerY
             });
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 }

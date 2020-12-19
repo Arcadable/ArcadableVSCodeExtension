@@ -22,7 +22,7 @@ export class DrawRectInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
         return [new Executable(async () => {
             const [
@@ -51,7 +51,7 @@ export class DrawRectInstruction extends Instruction {
                 drawRectColor,
             });
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 

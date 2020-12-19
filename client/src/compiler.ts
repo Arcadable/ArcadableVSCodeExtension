@@ -5,7 +5,7 @@ import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value,
 	ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction,
 	DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction,
 	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction,
-	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, DebugLogInstruction, FunctionParseResult,
+	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, WaitInstruction, DebugLogInstruction, FunctionParseResult,
 	ValueParseResult, DrawImageInstruction, ImageValue, DataValue, NumberArrayValueTypePointer} from 'arcadable-shared';
 import { ValueArrayValueTypePointer, ValueArrayValueType } from 'arcadable-shared/out/model/values/valueArrayValueType';
 import { Console } from 'console';
@@ -633,7 +633,8 @@ export class ArcadableCompiler {
 					if (instruction.await &&
 						(
 							instruction.type !== InstructionType.RunCondition &&
-							instruction.type !== InstructionType.RunSet
+							instruction.type !== InstructionType.RunSet &&
+							instruction.type !== InstructionType.Wait
 						)
 					) {
 						data.compileErrors.push({
@@ -706,6 +707,17 @@ export class ArcadableCompiler {
 							data.compileErrors.push(...this.checkImageReferences([instruction.params[2]], data, instruction.file, instruction.line, instruction.pos));
 							break;
 						}
+						case InstructionType.Wait: {
+							data.compileErrors.push(...this.checkNumbericalReferences([instruction.params[0]], data, instruction.file, instruction.line, instruction.pos));
+							if(instruction.await && !i.async) {
+								data.compileErrors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Cannot use wait in block that is not asynchronous'
+								});
+							}
+						}
 						case InstructionType.DebugLog: {
 							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[0]);
 							if (valueIndex === -1) {
@@ -718,7 +730,6 @@ export class ArcadableCompiler {
 									error: 'Value "' + instruction.params[0] + '" with type "List" cannot be used here.'
 								});
 							}
-
 							break;
 						}
 					}
@@ -1325,10 +1336,18 @@ export class CompileResult {
 				case InstructionType.DebugLog : {
 					return new DebugLogInstruction(
 						i,
-						new NumberValueTypePointer<Value>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
 						'',
 						this.game,
 						inst.await
+					);
+				}
+				case InstructionType.Wait : {
+					return new WaitInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						'',
+						this.game
 					);
 				}
 			}

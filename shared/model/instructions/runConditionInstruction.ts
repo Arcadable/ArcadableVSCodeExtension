@@ -20,7 +20,7 @@ export class RunConditionInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
         return [new Executable(async () => {
             if (await this.evaluationValue.getObject().isTruthy()) {
@@ -29,7 +29,7 @@ export class RunConditionInstruction extends Instruction {
                 return this.failSet.getExecutables();
             }
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
         
     }
 

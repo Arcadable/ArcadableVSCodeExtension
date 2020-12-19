@@ -20,6 +20,7 @@ export * from '../model/instructions/runConditionInstruction';
 export * from '../model/instructions/runSetInstruction';
 export * from '../model/instructions/setRotationInstruction';
 export * from '../model/instructions/debugLogInstruction';
+export * from '../model/instructions/waitInstruction';
 export * from '../model/instructions/drawImageInstruction';
 export * from '../model/values/_numberValueType';
 export * from '../model/values/analogInputValue';

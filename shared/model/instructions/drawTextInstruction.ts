@@ -23,7 +23,7 @@ export class DrawTextInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
         return [new Executable(async () => {
             let [
@@ -51,7 +51,7 @@ export class DrawTextInstruction extends Instruction {
                 textvalue,
             });
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 }

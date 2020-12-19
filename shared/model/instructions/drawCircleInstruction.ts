@@ -20,7 +20,7 @@ export class DrawCircleInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
         return [new Executable(async () => {
             const [
@@ -43,7 +43,7 @@ export class DrawCircleInstruction extends Instruction {
                 centerY
             });
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 }

@@ -18,10 +18,10 @@ export class RunSetInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
         return [new Executable(async () => {
             return this.set.getExecutables();
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 }

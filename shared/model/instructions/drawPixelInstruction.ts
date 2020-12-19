@@ -18,7 +18,7 @@ export class DrawPixelInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
         return [new Executable(async () => {
 
@@ -38,7 +38,7 @@ export class DrawPixelInstruction extends Instruction {
                 pixelColor,
             });
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 }

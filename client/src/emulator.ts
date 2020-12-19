@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { Subscription, Subject, BehaviorSubject, zip } from 'rxjs';
 import { auditTime } from 'rxjs/operators'
-import { Arcadable, SystemConfig } from 'arcadable-shared/';
+import { Arcadable, SystemConfig } from 'arcadable-shared';
 import { ArcadableCompiler, CompileResult } from './compiler';
 
 import { exportArcadable} from 'arcadable-shared/out/model/exportArcadable'

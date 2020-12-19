@@ -39,6 +39,9 @@
 					"include": "#execute"
 				},
 				{
+					"include": "#wait"
+				},
+				{
 					"include": "#debug"
 				},
 				{
@@ -178,6 +181,20 @@
 				},
 				"6": {
 					"name": "variable"
+				}
+			}
+		},
+		"wait": {
+			"match": "(wait)\\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\\.([0-9]+))?)|(\\.([0-9]+))))( *)\\)",
+			"captures": {
+				"1": {
+					"name": "keyword.control"
+				},
+				"4": {
+					"name": "variable"
+				},
+				"7": {
+					"name": "constant.numeric"
 				}
 			}
 		},

@@ -19,7 +19,8 @@ export enum InstructionType {
 	RunSet,
 	DebugLog,
 	InstructionSet,
-	DrawImage
+	DrawImage,
+	Wait
 }
 export const instructionTypes = Object.keys(InstructionType)
 	.filter(key => isNaN(Number(InstructionType[key as any]))).map((value) => {
@@ -57,7 +58,9 @@ export const instructionTypes = Object.keys(InstructionType)
 			case InstructionType.RunSet:
 				return { viewValue: 'Run instructionset', codeValue: 'execute();', value: Number(value) };
 			case InstructionType.DebugLog:
-				return { viewValue: 'Log value', codeValue: 'log(value);', value: Number(value) }
+				return { viewValue: 'Log value', codeValue: 'log(value);', value: Number(value) };
+			case InstructionType.Wait:
+				return { viewValue: 'Wait', codeValue: 'wait(millis);', value: Number(value) }
 			default:
 				return { viewValue: '', value: 0};
 		}
@@ -74,7 +77,7 @@ export abstract class Instruction extends LogicElement {
     	super(ID, name, game);
     }
 
-    abstract getExecutables(async: boolean): Executable[];
+    abstract getExecutables(async: boolean): Promise<Executable[]>;
 
 }
 export class InstructionPointer {
@@ -87,7 +90,7 @@ export class InstructionPointer {
 	await(): boolean {
 		return this.game.instructions[this.ID].await;
 	}
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
     	return this.game.instructions[this.ID].getExecutables(async);
     }
 }

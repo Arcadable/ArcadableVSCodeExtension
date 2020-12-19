@@ -16,7 +16,7 @@ export class SetRotationInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
         return [new Executable(async () => {
             const rotation = await this.rotationValue.getValue();
 
@@ -25,7 +25,7 @@ export class SetRotationInstruction extends Instruction {
                 rotation,
             });
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 }

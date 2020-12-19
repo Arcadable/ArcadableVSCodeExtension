@@ -978,6 +978,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 			const mutateMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=/g) as RegExpMatchArray;
 			const conditionMatch = section.substr(position).match(/^if/g) as RegExpMatchArray;
 			const debugMatch = section.substr(position).match(/^log/g) as RegExpMatchArray;
+			const waitMatch = section.substr(position).match(/^wait/g) as RegExpMatchArray;
 
 			if (drawMatch) {
 				const drawMatchType = section.substr(position).match(/^draw\.(clear|(drawPixel|drawText|drawCircle|drawImage|fillCircle|drawRect|fillRect|drawTriangle|fillTriangle|drawLine|setRotation))/g) as RegExpMatchArray;
@@ -1196,6 +1197,35 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					});
 				} else {
 					result.errors.push({ error: 'Unexpected log format ("log(myValue)"), or missing ";"', pos: position + totalPosition + debugMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+				}
+			} else if (waitMatch) {
+				const waitMatchFormat = section.substr(position).match(/^wait\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+				if (waitMatchFormat) {
+					const waitName = 'wait -' + name + '-' + (instructionSetStartLine + lineNumber + 2) + '-' + (position + totalPosition + waitMatch[0].length);
+
+					let value = waitMatchFormat[0].replace(/\s/g, '').replace('wait(', '').replace(')END_OF_SECTION', '');
+					const parsedValue = Number.parseFloat(value);
+					if(!Number.isNaN(parsedValue)) {
+						const subValueName = waitName + '-value';
+						result.values.push({
+							name: subValueName,
+							type: ValueType.number,
+							value: parsedValue,
+							line: instructionSetStartLine + lineNumber + 2,
+							pos: position + totalPosition
+						});
+						value = subValueName;
+					}
+
+					result.instructions.push({
+						type: InstructionType.Wait,
+						params: [value],
+						line: instructionSetStartLine + lineNumber + 2,
+						pos: position + totalPosition,
+						await: false
+					});
+				} else {
+					result.errors.push({ error: 'Unexpected wait format ("wait(myValue)"), or missing ";"', pos: position + totalPosition + waitMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 				}
 
 			} else if (mutateMatch) {

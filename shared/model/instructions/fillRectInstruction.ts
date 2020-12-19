@@ -21,7 +21,7 @@ export class FillRectInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
         return [new Executable(async () => {
             const [
                 topLeftDrawX,
@@ -48,7 +48,7 @@ export class FillRectInstruction extends Instruction {
                 drawRectColor,
             });
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 }

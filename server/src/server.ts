@@ -19,6 +19,7 @@ import {
 } from 'vscode-languageserver-textdocument';
 import { ArcadableParser, valueTypes, instructionTypes, ParsedFile, FunctionParseResult, ValueParseResult } from 'arcadable-shared/';
 let connection: IConnection = createConnection(ProposedFeatures.all);
+
 let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability: boolean = false;

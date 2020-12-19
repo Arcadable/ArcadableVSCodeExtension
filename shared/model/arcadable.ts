@@ -98,43 +98,58 @@ export class Arcadable {
 
 
     private async doMainStep() {
-    	this.systemConfig.fetchInputValues();
+		this.systemConfig.fetchInputValues();
+		this.mainCallStack.prepareStep();
     	const mainInstructionSet = this.instructionSets[
     		this.mainInstructionSet
 		] as InstructionSet;
-		this.mainCallStack.pushfront(...mainInstructionSet.getExecutables());
-		/*.instructions.reduce((cs, instructionPointer) => {
-			cs.pushback(...instructionPointer.getExecutables(false));
-			return cs;
-		}, this.mainCallStack);*/
+		this.mainCallStack.pushfront(...(await mainInstructionSet.getExecutables()));
+
 		this.processCallStack(this.mainCallStack);
 	}
 
 	private async processCallStack(callStack: CallStack) {
 		if(callStack.size() > 0) {
 			const executable = callStack.pop();
+
 			if(executable) {
-				let newExecutables = (await executable.action()).map(e => executable.parentAwait ? e.withParentAwait(executable.parentAwait) : e);
-				if(newExecutables.length > 0) {
-					if(executable.async) {
-						if (executable.awaiting.length > 0) {
-							const waitFor = new Executable(async () => executable.awaiting.map(e => executable.parentAwait ? e.withParentAwait(executable.parentAwait) : e), true, [], executable.parentAwait);
-							newExecutables = newExecutables.map(e => e.withParentAwait(waitFor))
-							callStack.pushfront(...newExecutables);
-							if(executable.parentAwait) {
-								callStack.pushinfrontof(executable.parentAwait, waitFor);
-							} else {
-								callStack.pushback(waitFor);
-							}
-						} else {
-							callStack.pushfront(...newExecutables);
-						}
+				if(!!executable.executeOnMillis) {
+
+					if(executable.executeOnMillis <= new Date().getTime()) {
+						await this.processExecutable(executable, callStack);
 					} else {
-						callStack.pushfront(...newExecutables);
+						callStack.delayScheduledSection(executable);
 					}
+				} else {
+					await this.processExecutable(executable, callStack);
 				}
 			}
-			this.processCallStack(callStack);
+			if (callStack.doProcessMore()) {
+				this.processCallStack(callStack);
+			}
+		}
+	}
+
+	private async processExecutable(executable: Executable, callStack: CallStack) {
+		let newExecutables = (await executable.action()).map(e => executable.parentAwait ? e.withParentAwait(executable.parentAwait) : e);
+
+		if(newExecutables.length > 0) {
+			if(executable.async) {
+				if (executable.awaiting.length > 0) {
+					const waitFor = new Executable(async () => executable.awaiting.map(e => executable.parentAwait ? e.withParentAwait(executable.parentAwait) : e), true, false, [], executable.parentAwait, null);
+					newExecutables = newExecutables.map(e => e.withParentAwait(waitFor))
+					callStack.pushfront(...newExecutables);
+					if(executable.parentAwait) {
+						callStack.pushinfrontof(executable.parentAwait, waitFor);
+					} else {
+						callStack.pushback(waitFor);
+					}
+				} else {
+					callStack.pushfront(...newExecutables);
+				}
+			} else {
+				callStack.pushfront(...newExecutables);
+			}
 		}
 	}
 
@@ -143,16 +158,13 @@ export class Arcadable {
     		this.renderInstructionSet
 		] as InstructionSet;
 
-		renderInstructionSet.instructions.reduce((cs, instructionPointer) => {
-			cs.pushfront(...instructionPointer.getExecutables(false));
-			return cs;
-		}, this.renderCallStack);
+		this.renderCallStack.pushfront(...(await renderInstructionSet.getExecutables()));
 		this.renderCallStack.pushback(new Executable(async () => {
 			this.instructionEmitter.next({command: 'renderDone'});
 			return [];
-		}, false, [], null));
-
+		}, false, false, [], null, null));
 		this.processCallStack(this.renderCallStack);
+
     }
 
 }

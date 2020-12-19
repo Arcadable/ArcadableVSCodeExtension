@@ -19,14 +19,14 @@ export class MutateValueInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
         return [new Executable(async () => {
             const valueLeft = this.leftValue.getObject();
             const right = await this.rightValue.getValue();
             await valueLeft.set(right);
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 }

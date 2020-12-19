@@ -21,7 +21,7 @@ export class DrawImageInstruction extends Instruction {
     }
 
 
-    getExecutables(async: boolean): Executable[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
         return [new Executable(async () => {
             const [
@@ -44,7 +44,7 @@ export class DrawImageInstruction extends Instruction {
                 data: data.data
             });
             return [];
-        }, async, [], null)];
+        }, async, false, [], null, null)];
     }
 
 }
