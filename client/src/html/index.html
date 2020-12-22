@@ -12,6 +12,10 @@
 <body>
     <div class="header">
         <button class="export" onclick="exportByteCode()">Export game</button>
+        <div class="volume">
+            <input type="range" id="volumneslider" name="volumeslider" min=0 max=100 value=50/>
+            <label for="volumeslider"></label>
+        </div>
     </div>
     <div class="simulationContainer">
         <div>
@@ -26,7 +30,7 @@
             </div>
         </div>
     </div>
-
+    <script src="{{beepScriptSrc}}"></script>
     <script src="{{functionScriptSrc}}"></script>
     <script src="{{mainScriptSrc}}"></script>
 </body>

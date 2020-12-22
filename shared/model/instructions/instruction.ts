@@ -20,7 +20,11 @@ export enum InstructionType {
 	DebugLog,
 	InstructionSet,
 	DrawImage,
-	Wait
+	Wait,
+	Tone,
+	AwaitedRunSet,
+	AwaitedRunCondition,
+	AwaitedTone
 }
 export const instructionTypes = Object.keys(InstructionType)
 	.filter(key => isNaN(Number(InstructionType[key as any]))).map((value) => {
@@ -60,7 +64,9 @@ export const instructionTypes = Object.keys(InstructionType)
 			case InstructionType.DebugLog:
 				return { viewValue: 'Log value', codeValue: 'log(value);', value: Number(value) };
 			case InstructionType.Wait:
-				return { viewValue: 'Wait', codeValue: 'wait(millis);', value: Number(value) }
+				return { viewValue: 'Wait', codeValue: 'wait(millis);', value: Number(value) };
+			case InstructionType.Tone:
+				return { viewValue: 'Tone', codeValue: 'tone(volume, frequency, duration);', value: Number(value) }
 			default:
 				return { viewValue: '', value: 0};
 		}

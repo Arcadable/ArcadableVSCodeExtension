@@ -20,20 +20,20 @@
 				{
 					"include": "#import"
 				},
-
 				{
 					"include": "#eval"
 				},
-
 				{
 					"include": "#number"
 				},
-
 				{
 					"include": "#eval2"
 				},
 				{
 					"include": "#variable"
+				},
+				{
+					"include": "#tone"
 				},
 				{
 					"include": "#execute"
@@ -181,6 +181,17 @@
 				},
 				"6": {
 					"name": "variable"
+				}
+			}
+		},
+		"tone": {
+			"match": "(await( +?))?(tone)\\(",
+			"captures": {
+				"1": {
+					"name": "keyword.control"
+				},
+				"3": {
+					"name": "entity.name.function"
 				}
 			}
 		},

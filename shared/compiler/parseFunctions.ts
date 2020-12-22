@@ -979,6 +979,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 			const conditionMatch = section.substr(position).match(/^if/g) as RegExpMatchArray;
 			const debugMatch = section.substr(position).match(/^log/g) as RegExpMatchArray;
 			const waitMatch = section.substr(position).match(/^wait/g) as RegExpMatchArray;
+			const toneMatch = section.substr(position).match(/^(await( +?))?tone/g) as RegExpMatchArray;
 
 			if (drawMatch) {
 				const drawMatchType = section.substr(position).match(/^draw\.(clear|(drawPixel|drawText|drawCircle|drawImage|fillCircle|drawRect|fillRect|drawTriangle|fillTriangle|drawLine|setRotation))/g) as RegExpMatchArray;
@@ -1168,6 +1169,43 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					}
 				} else {
 					result.errors.push({ error: 'Unexpected execute format ("execute(myFunction)" or "await execute(myFunction)"), or missing ";"', pos: position + totalPosition + executeMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+				}
+			} else if (toneMatch) {
+				const toneMatchFormat = section.substr(position).match(/^(await( +?))?tone\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+				if (toneMatchFormat) {
+					const await = section.substr(position).startsWith('await');
+					const params = toneMatchFormat[0].replace(/\s/g, '').replace('await', '').replace(/\s/g, '').replace('tone(', '').replace(')END_OF_SECTION', '').split(',');
+
+					const actualParams: string[] = [];
+					params.forEach((p, i) => {
+						const parsedParam = Number.parseFloat(p);
+						if(!Number.isNaN(parsedParam)) {
+							const subParamName = 'tone - ' + name + (instructionSetStartLine + lineNumber + 2) + '-param-' + i;
+							result.values.push({
+								name: subParamName,
+								type: ValueType.number,
+								value: parsedParam,
+								line: instructionSetStartLine + lineNumber + 2,
+								pos: position + totalPosition
+							});
+							actualParams.push(subParamName);
+						} else {
+							actualParams.push(p);
+						}
+					});
+					
+					result.instructions.push({
+						type: InstructionType.Tone,
+						params: actualParams,
+						line: instructionSetStartLine + lineNumber + 2,
+						pos: position + totalPosition,
+						await
+					});
+					if(await && !async) {
+						result.errors.push({ error: 'Cannot use await in function that is not asynchronous', pos: position + totalPosition + toneMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+					}
+				} else {
+					result.errors.push({ error: 'Unexpected tone format ("tone(myVolume, myFrequency, myDuration)" or "await tone(myVolume, myFrequency, myDuration)"), or missing ";"', pos: position + totalPosition + toneMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 				}
 			} else if (debugMatch) {
 				const debugMatchFormat = section.substr(position).match(/^log\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;

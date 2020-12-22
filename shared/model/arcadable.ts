@@ -111,8 +111,9 @@ export class Arcadable {
 	private async processCallStack(callStack: CallStack) {
 		if(callStack.size() > 0) {
 			const executable = callStack.pop();
-
 			if(executable) {
+				await executable.checkWaitMillis();
+
 				if(!!executable.executeOnMillis) {
 
 					if(executable.executeOnMillis <= new Date().getTime()) {

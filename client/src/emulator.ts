@@ -401,9 +401,16 @@ export class Emulator {
 			)
 		).toString();
 
+		const beepScriptSrcUrl = currentPanel.webview.asWebviewUri(
+			vscode.Uri.file(
+				path.join(context.extensionPath, 'client', 'src', 'js', 'beep.js')
+			)
+		).toString();
+
 		currentPanel.webview.html = fs.readFileSync(templateFilePath.fsPath, 'utf8')
 			.replace('{{styleSrc}}', styleSrcUrl)
 			.replace('{{mainScriptSrc}}', mainScriptSrcUrl)
+			.replace('{{beepScriptSrc}}', beepScriptSrcUrl)
 			.replace('{{functionScriptSrc}}', drawFunctionsScriptSrcUrl);
 
 		

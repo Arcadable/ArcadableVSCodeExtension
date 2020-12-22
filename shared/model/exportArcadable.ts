@@ -333,7 +333,7 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 
-	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.RunCondition).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.RunCondition && !game.instructions[Number(k)].await).reduce((acc, curr) =>
 		acc +
 		makeLength(game.instructions[Number(curr)].ID.toString(2), 16) +
 		makeLength((game.instructions[Number(curr)] ).evaluationValue.ID.toString(2), 16) +
@@ -341,6 +341,20 @@ export function exportArcadable(game: any): Uint8Array {
 		makeLength((game.instructions[Number(curr)] ).successSet.ID.toString(2), 16)
 		,
 		makeLength((InstructionType.RunCondition + 128).toString(2), 8)
+	);
+	if(tempBinaryString.length > 8) {
+		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
+		binaryString += tempBinaryString;
+	}
+
+	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.RunCondition && !!game.instructions[Number(k)].await).reduce((acc, curr) =>
+		acc +
+		makeLength(game.instructions[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).evaluationValue.ID.toString(2), 16) +
+		((game.instructions[Number(curr)] ).failSet ? makeLength((game.instructions[Number(curr)] ).failSet.ID.toString(2), 16) : '1111111111111111') +
+		makeLength((game.instructions[Number(curr)] ).successSet.ID.toString(2), 16)
+		,
+		makeLength((InstructionType.AwaitedRunCondition + 128).toString(2), 8)
 	);
 	if(tempBinaryString.length > 8) {
 		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
@@ -359,12 +373,24 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 
-	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.RunSet).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.RunSet && !game.instructions[Number(k)].await).reduce((acc, curr) =>
 		acc +
 		makeLength(game.instructions[Number(curr)].ID.toString(2), 16) +
 		makeLength((game.instructions[Number(curr)] ).set.ID.toString(2), 16)
 		,
 		makeLength((InstructionType.RunSet + 128).toString(2), 8)
+	);
+	if(tempBinaryString.length > 8) {
+		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
+		binaryString += tempBinaryString;
+	}
+
+	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.RunSet && !!game.instructions[Number(k)].await).reduce((acc, curr) =>
+		acc +
+		makeLength(game.instructions[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).set.ID.toString(2), 16)
+		,
+		makeLength((InstructionType.AwaitedRunSet + 128).toString(2), 8)
 	);
 	if(tempBinaryString.length > 8) {
 		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
@@ -383,19 +409,62 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 
+	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.Wait).reduce((acc, curr) =>
+		acc +
+		makeLength(game.instructions[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).amountValue.ID.toString(2), 16)
+		,
+		makeLength((InstructionType.Wait + 128).toString(2), 8)
+	);
+	if(tempBinaryString.length > 8) {
+		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
+		binaryString += tempBinaryString;
+	}
+
+	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.Tone && !game.instructions[Number(k)].await).reduce((acc, curr) =>
+		acc +
+		makeLength(game.instructions[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).volumeValue.ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).frequencyValue.ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).durationValue.ID.toString(2), 16)
+		,
+		makeLength((InstructionType.Tone + 128).toString(2), 8)
+	);
+	if(tempBinaryString.length > 8) {
+		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
+		binaryString += tempBinaryString;
+	}
+
+	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.Tone && !!game.instructions[Number(k)].await).reduce((acc, curr) =>
+		acc +
+		makeLength(game.instructions[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).volumeValue.ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).frequencyValue.ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).durationValue.ID.toString(2), 16)
+		,
+		makeLength((InstructionType.AwaitedTone + 128).toString(2), 8)
+	);
+	if(tempBinaryString.length > 8) {
+		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
+		binaryString += tempBinaryString;
+	}
+
 	const mainSet = game.instructionSets[game.mainInstructionSet];
 	const renderSet = game.instructionSets[game.renderInstructionSet];
 	tempBinaryString = makeLength((InstructionType.InstructionSet + 128).toString(2), 8) +
 		makeLength(mainSet.ID.toString(2), 16) +
-		makeLength(mainSet.size.toString(2), 16) +
+		(mainSet.async ? '1' : '0') +
+		makeLength(mainSet.size.toString(2), 15) +
 		mainSet.instructions.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '') +
 		makeLength(renderSet.ID.toString(2), 16) +
-		makeLength(renderSet.size.toString(2), 16) +
+		(mainSet.async ? '1' : '0') +
+		makeLength(mainSet.size.toString(2), 15) +
 		renderSet.instructions.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '') +
 		Object.keys(game.instructionSets).filter(k => +k !== game.mainInstructionSet && +k !== game.renderInstructionSet).reduce((acc, curr) =>
 			acc +
 			makeLength(game.instructionSets[Number(curr)].ID.toString(2), 16) +
-			makeLength(game.instructionSets[Number(curr)].size.toString(2), 16) +
+			(game.instructionSets[Number(curr)].async ? '1' : '0') +
+			makeLength(game.instructionSets[Number(curr)].size.toString(2), 15) +
 			game.instructionSets[Number(curr)].instructions.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '')
 			,
 			''

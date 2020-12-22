@@ -4,10 +4,13 @@ const canvas = document.getElementById('canvasEl');
 const tempCanvas = document.getElementById('textCanvasEl');
 const canvasContext = canvas.getContext('2d');
 const tempCanvasContext = tempCanvas.getContext('2d');
-
-
+let volume = 0.5;
+document.getElementById('volumneslider').oninput = (event) => {
+    volume = Number.parseInt(event.target.value) / 100;
+};
 
 function exportByteCode() {
+
     vscode.postMessage({
         command: 'export'
     })
@@ -165,6 +168,9 @@ window.addEventListener('message', event => {
             renderInstructions.push(() => {
                 setRotation(message.rotation);
             });
+            break;
+        case 'tone':
+            beep(message.volume * volume, message.frequency, message.duration);
             break;
     }
 });

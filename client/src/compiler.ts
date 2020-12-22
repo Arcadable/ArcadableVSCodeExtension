@@ -4,7 +4,7 @@ import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value,
 	SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType,
 	ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction,
 	DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction,
-	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction,
+	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, ToneInstruction,
 	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, WaitInstruction, DebugLogInstruction, FunctionParseResult,
 	ValueParseResult, DrawImageInstruction, ImageValue, DataValue, NumberArrayValueTypePointer} from 'arcadable-shared';
 import { ValueArrayValueTypePointer, ValueArrayValueType } from 'arcadable-shared/out/model/values/valueArrayValueType';
@@ -634,7 +634,8 @@ export class ArcadableCompiler {
 						(
 							instruction.type !== InstructionType.RunCondition &&
 							instruction.type !== InstructionType.RunSet &&
-							instruction.type !== InstructionType.Wait
+							instruction.type !== InstructionType.Wait &&
+							instruction.type !== InstructionType.Tone
 						)
 					) {
 						data.compileErrors.push({
@@ -732,6 +733,18 @@ export class ArcadableCompiler {
 							}
 							break;
 						}
+						case InstructionType.Tone: {
+							data.compileErrors.push(...this.checkNumbericalReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
+							if(instruction.await && !i.async) {
+								data.compileErrors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Cannot use await in block that is not asynchronous'
+								});
+							}
+							break;
+						} 
 					}
 				});
 			}
@@ -1328,6 +1341,17 @@ export class CompileResult {
 					return new SetRotationInstruction(
 						i,
 						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.Tone : {
+					return new ToneInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
 						'',
 						this.game,
 						inst.await

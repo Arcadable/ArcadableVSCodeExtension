@@ -22,6 +22,7 @@ export * from '../model/instructions/setRotationInstruction';
 export * from '../model/instructions/debugLogInstruction';
 export * from '../model/instructions/waitInstruction';
 export * from '../model/instructions/drawImageInstruction';
+export * from '../model/instructions/toneInstruction';
 export * from '../model/values/_numberValueType';
 export * from '../model/values/analogInputValue';
 export * from '../model/values/digitalInputValue';

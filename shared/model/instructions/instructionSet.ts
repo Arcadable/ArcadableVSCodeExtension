@@ -3,6 +3,7 @@ import { Executable } from './../callStack';
 import { Arcadable } from '../arcadable';
 import { LogicElement } from '../logicElement';
 import { Instruction, InstructionPointer, InstructionType } from './instruction';
+import { ToneInstruction } from './toneInstruction';
 
 export class InstructionSet extends LogicElement {
 
@@ -21,12 +22,23 @@ export class InstructionSet extends LogicElement {
         const allExecutables = await this.instructions.reduce(
             async (acc: Promise<Executable[]>, instruction: InstructionPointer) => {
                 const accumulative = await acc;
-                let millis = null;
-                if(this.game.instructions[instruction.ID].instructionType === InstructionType.Wait) {
-                    millis = new Date().getTime() + (await (this.game.instructions[instruction.ID] as WaitInstruction).amountValue.getValue());
+                switch(this.game.instructions[instruction.ID].instructionType) {
+                    case InstructionType.Wait: {
+                        const newExecutable = new Executable(async () => instruction.getExecutables(this.async), this.async, instruction.await(), [], null, () => (this.game.instructions[instruction.ID] as WaitInstruction).amountValue.getValue());
+                        return [...accumulative, newExecutable];
+                    }
+                    case InstructionType.Tone: {
+                        if(instruction.await()) {
+                            const newExecutable = new Executable(async () => instruction.getExecutables(this.async), this.async, false, [], null, null);
+                            const toAwait = new Executable(async () => [new Executable(async () => [], this.async, false, [], null, null)], this.async, true, [], null, () => (this.game.instructions[instruction.ID] as ToneInstruction).durationValue.getValue());
+                            return [...accumulative, newExecutable, toAwait];
+                        }
+                        break;
+                    }
                 }
-                const newExecutable = new Executable(async () => instruction.getExecutables(this.async), this.async, instruction.await(), [], null, millis);
+                const newExecutable = new Executable(async () => instruction.getExecutables(this.async), this.async, instruction.await(), [], null, null);
                 return [...accumulative, newExecutable];
+
             }, Promise.resolve([]) as Promise<Executable[]>
         );
         return this.processAwaiting(allExecutables);
