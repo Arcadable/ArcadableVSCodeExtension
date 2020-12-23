@@ -1,5 +1,5 @@
 export class Executable {
-	public executeOnMillis: number | null = null;;
+	public executeOnMillis: number | null = null;
 
 	constructor(
 		public action: () => Promise<Executable[]>,

@@ -155,6 +155,8 @@ export class Arcadable {
 	}
 
 	private async doRenderStep() {
+		this.renderCallStack.prepareStep();
+
     	const renderInstructionSet = this.instructionSets[
     		this.renderInstructionSet
 		] as InstructionSet;
