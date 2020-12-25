@@ -26,6 +26,7 @@ export class SystemConfig {
     realTimeDigitalInputValues: {[key: number]: (1 | 0)} = {};
     analogInputValues: number[] = [];
     realTimeAnalogInputValues: {[key: number]: number} = {};
+
     constructor(
         public screenWidth: number,
         public screenHeight: number,
@@ -34,6 +35,7 @@ export class SystemConfig {
         public layoutIsZigZag: boolean,
         public digitalInputPinsAmount: number,
         public analogInputPinsAmount: number,
+        public speakerOutputAmount: number,
         public startMillis: number
     ) {
         for (let i = 0; i < this.digitalInputPinsAmount; i++) {

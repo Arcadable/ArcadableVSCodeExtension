@@ -12,7 +12,8 @@ export enum ValueType {
     text,
 	evaluation,
 	image,
-	data
+	data,
+	speakerOutputPointer
 }
 export const valueTypes = Object.keys(ValueType).filter(key => isNaN(Number(ValueType[key as any]))).map((value) => {
 	switch (Number(value)) {
@@ -38,6 +39,8 @@ export const valueTypes = Object.keys(ValueType).filter(key => isNaN(Number(Valu
 			return { viewValue: 'Image', codeValue: 'Image', value: Number(value) };
 		case ValueType.data:
 			return { viewValue: 'Data', codeValue: 'Data', value: Number(value) };
+		case ValueType.speakerOutputPointer:
+			return { viewValue: 'Speaker output pointer', codeValue: 'Speaker', value: Number(value) };
 		default:
 			return { viewValue: '', value: 0};
 	}

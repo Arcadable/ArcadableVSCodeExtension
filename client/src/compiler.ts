@@ -4,7 +4,7 @@ import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value,
 	SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType,
 	ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction,
 	DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction,
-	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, ToneInstruction,
+	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, ToneInstruction, SpeakerOutputValue,
 	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, WaitInstruction, DebugLogInstruction, FunctionParseResult,
 	ValueParseResult, DrawImageInstruction, ImageValue, DataValue, NumberArrayValueTypePointer} from 'arcadable-shared';
 import { ValueArrayValueTypePointer, ValueArrayValueType } from 'arcadable-shared/out/model/values/valueArrayValueType';
@@ -1059,6 +1059,9 @@ export class CompileResult {
 				case ValueType.digitalInputPointer: {
 					return new DigitalInputValue(i, +v.value, '', this.game);
 				}
+				case ValueType.speakerOutputPointer: {
+					return new SpeakerOutputValue(i, +v.value, '', this.game);
+				}
 				case ValueType.evaluation: {
 					return new EvaluationValue(
 						i,
@@ -1349,9 +1352,10 @@ export class CompileResult {
 				case InstructionType.Tone : {
 					return new ToneInstruction(
 						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<SpeakerOutputValue>(+inst.params[0], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
 						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
 						'',
 						this.game,
 						inst.await

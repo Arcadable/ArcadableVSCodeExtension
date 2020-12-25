@@ -4,6 +4,10 @@ const canvas = document.getElementById('canvasEl');
 const tempCanvas = document.getElementById('textCanvasEl');
 const canvasContext = canvas.getContext('2d');
 const tempCanvasContext = tempCanvas.getContext('2d');
+const speakerOff = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0Ij48cGF0aCBkPSJNMCAwaDI0djI0SDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTcgOXY2aDRsNSA1VjRsLTUgNUg3eiIvPjwvc3ZnPg==';
+const speakerOn = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0Ij48cGF0aCBkPSJNMCAwaDI0djI0SDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTMgOXY2aDRsNSA1VjRMNyA5SDN6bTEzLjUgM2MwLTEuNzctMS4wMi0zLjI5LTIuNS00LjAzdjguMDVjMS40OC0uNzMgMi41LTIuMjUgMi41LTQuMDJ6TTE0IDMuMjN2Mi4wNmMyLjg5Ljg2IDUgMy41NCA1IDYuNzFzLTIuMTEgNS44NS01IDYuNzF2Mi4wNmM0LjAxLS45MSA3LTQuNDkgNy04Ljc3cy0yLjk5LTcuODYtNy04Ljc3eiIvPjwvc3ZnPg==';
+
+const speakers = {}
 let volume = 0.5;
 document.getElementById('volumneslider').oninput = (event) => {
     volume = Number.parseInt(event.target.value) / 100;
@@ -19,6 +23,7 @@ function clearInputs() {
    document.getElementById('digitalInputContainer').innerHTML = '';
    document.getElementById('analogInputContainer').innerHTML = '';
 }
+
 function addDigitalInput(id) {
     var input = document.createElement("INPUT");
     var label = document.createElement("LABEL");
@@ -65,7 +70,19 @@ function addAnalogInput(id) {
         })
     };
 }
-
+function clearSpeakers() {
+    document.getElementById('speakersContainer').innerHTML = '';
+}
+function addSpeaker(id) {
+    var img = document.createElement("IMG");
+    img.setAttribute('src', speakerOff);
+    img.setAttribute('class', 'off');
+    document.getElementById('speakersContainer').appendChild(img);
+    speakers[id] = {
+        element: img,
+        onUntil: 0
+    };
+} 
 renderInstructions = [];
 
 window.addEventListener('message', event => {
@@ -85,6 +102,13 @@ window.addEventListener('message', event => {
             }
             for(let i = 0; i < message.analogInputs; i++) {
                 addAnalogInput(i);
+            }
+            break;
+        }
+        case 'setSpeakers': {
+            clearSpeakers();
+            for(let i = 0; i < message.speakers; i++) {
+                addSpeaker(i);
             }
             break;
         }
@@ -171,6 +195,19 @@ window.addEventListener('message', event => {
             break;
         case 'tone':
             beep(message.volume * volume, message.frequency, message.duration);
+            const newTime = new Date().getTime() + message.duration;
+            if(newTime > speakers[message.speaker].onUntil) {
+                speakers[message.speaker].onUntil = new Date().getTime() + message.duration;
+                speakers[message.speaker].element.setAttribute('src', speakerOn);
+                speakers[message.speaker].element.setAttribute('class', 'on');
+
+                setTimeout(() => {
+                    if(speakers[message.speaker].onUntil <= new Date().getTime()) {
+                        speakers[message.speaker].element.setAttribute('src', speakerOff);
+                        speakers[message.speaker].element.setAttribute('class', 'off');
+                    }
+                }, message.duration + 10);
+            }
             break;
     }
 });

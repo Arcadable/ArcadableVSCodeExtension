@@ -66,7 +66,7 @@ export const instructionTypes = Object.keys(InstructionType)
 			case InstructionType.Wait:
 				return { viewValue: 'Wait', codeValue: 'wait(millis);', value: Number(value) };
 			case InstructionType.Tone:
-				return { viewValue: 'Tone', codeValue: 'tone(volume, frequency, duration);', value: Number(value) }
+				return { viewValue: 'Tone', codeValue: 'tone(speaker, volume, frequency, duration);', value: Number(value) }
 			default:
 				return { viewValue: '', value: 0};
 		}

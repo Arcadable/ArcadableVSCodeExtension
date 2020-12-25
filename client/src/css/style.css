@@ -76,3 +76,23 @@ canvas {
 #analogInputContainer div {
     width: 50%;
 }
+#speakersContainer {
+    background: #303030;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+img {
+    width: 40px;
+    height: 30px;
+}
+img.off {
+    padding-right: 8px;
+    width: 32px;
+}
+img.on {
+    filter: invert(79%) sepia(28%) saturate(1043%) hue-rotate(91deg) brightness(96%) contrast(83%);
+    
+}

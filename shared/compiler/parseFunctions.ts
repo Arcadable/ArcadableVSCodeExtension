@@ -215,6 +215,28 @@ export function ParseValueDigital(section: string, otherMatchWithType: RegExpMat
 	return result;
 }
 
+export function ParseValueSpeaker(section: string, otherMatchWithType: RegExpMatchArray) {
+	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
+	const name = values[0];
+	const result: ValueParseResult = {
+		value: null,
+		errors: []
+	};
+	const speakerMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)Speaker( *)=( *)(([0-9]+))END_OF_SECTION$/g) as RegExpMatchArray;
+	if (speakerMatch) {
+		const value = speakerMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
+		result.value = {
+			type: ValueType.speakerOutputPointer,
+			value,
+			name
+		};
+	} else {
+		result.errors.push({ error: 'Incorrect speaker index format or missing ";"', pos: otherMatchWithType[0].length });
+	}
+	return result;
+}
+
+
 export function ParseValuePixel(section: string, otherMatchWithType: RegExpMatchArray) {
 	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
 	const name = values[0];
@@ -1171,7 +1193,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					result.errors.push({ error: 'Unexpected execute format ("execute(myFunction)" or "await execute(myFunction)"), or missing ";"', pos: position + totalPosition + executeMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 				}
 			} else if (toneMatch) {
-				const toneMatchFormat = section.substr(position).match(/^(await( +?))?tone\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+				const toneMatchFormat = section.substr(position).match(/^(await( +?))?tone\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 				if (toneMatchFormat) {
 					const await = section.substr(position).startsWith('await');
 					const params = toneMatchFormat[0].replace(/\s/g, '').replace('await', '').replace(/\s/g, '').replace('tone(', '').replace(')END_OF_SECTION', '').split(',');
@@ -1205,7 +1227,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 						result.errors.push({ error: 'Cannot use await in function that is not asynchronous', pos: position + totalPosition + toneMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 					}
 				} else {
-					result.errors.push({ error: 'Unexpected tone format ("tone(myVolume, myFrequency, myDuration)" or "await tone(myVolume, myFrequency, myDuration)"), or missing ";"', pos: position + totalPosition + toneMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+					result.errors.push({ error: 'Unexpected tone format ("tone(mySpeaker, myVolume, myFrequency, myDuration)" or "await tone(mySpeaker, myVolume, myFrequency, myDuration)"), or missing ";"', pos: position + totalPosition + toneMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 				}
 			} else if (debugMatch) {
 				const debugMatchFormat = section.substr(position).match(/^log\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;

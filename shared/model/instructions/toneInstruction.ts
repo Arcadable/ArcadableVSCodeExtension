@@ -1,3 +1,4 @@
+import { SpeakerOutputValue } from './../values/speakerOutputValue';
 import { Executable } from './../callStack';
 import { Arcadable } from '../arcadable';
 import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
@@ -7,6 +8,7 @@ export class ToneInstruction extends Instruction {
 
     constructor(
         ID: number,
+        public speakerOutputValue: NumberValueTypePointer<SpeakerOutputValue>,
         public volumeValue: NumberValueTypePointer<NumberValueType>,
         public frequencyValue: NumberValueTypePointer<NumberValueType>,
         public durationValue: NumberValueTypePointer<NumberValueType>,
@@ -21,18 +23,23 @@ export class ToneInstruction extends Instruction {
     async getExecutables(async: boolean): Promise<Executable[]> {
         return [new Executable(async () => {
             let volume = await this.volumeValue.getValue();
-            const frequency = await this.frequencyValue.getValue();
+            let frequency = await this.frequencyValue.getValue();
             const duration = await this.durationValue.getValue();
+            
             if(volume > 1) {
                 volume = 1;
             } else if( volume < 0) {
                 volume = 0;
             }
+            if( frequency < 1) {
+                frequency = 1;
+            }
             this.game.instructionEmitter.next({
                 command: 'tone',
                 volume,
                 frequency,
-                duration
+                duration,
+                speaker: this.speakerOutputValue.getObject().index
             });
             return [];
         }, async, false, [], null, null)];

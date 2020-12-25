@@ -29,6 +29,18 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
 		binaryString += tempBinaryString;
 	}
+
+	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.speakerOutputPointer).reduce((acc, curr) =>
+		acc +
+		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.values[Number(curr)] ).index.toString(2), 8)
+		,
+		makeLength(ValueType.speakerOutputPointer.toString(2), 8)
+	);
+	if(tempBinaryString.length > 8) {
+		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
+		binaryString += tempBinaryString;
+	}
 	
 	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.evaluation).reduce((acc, curr) =>
 		acc +
@@ -424,6 +436,7 @@ export function exportArcadable(game: any): Uint8Array {
 	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.Tone && !game.instructions[Number(k)].await).reduce((acc, curr) =>
 		acc +
 		makeLength(game.instructions[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).speakerOutputValue.ID.toString(2), 16) +
 		makeLength((game.instructions[Number(curr)] ).volumeValue.ID.toString(2), 16) +
 		makeLength((game.instructions[Number(curr)] ).frequencyValue.ID.toString(2), 16) +
 		makeLength((game.instructions[Number(curr)] ).durationValue.ID.toString(2), 16)
@@ -438,6 +451,7 @@ export function exportArcadable(game: any): Uint8Array {
 	tempBinaryString = Object.keys(game.instructions).filter(k => game.instructions[Number(k)].instructionType === InstructionType.Tone && !!game.instructions[Number(k)].await).reduce((acc, curr) =>
 		acc +
 		makeLength(game.instructions[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.instructions[Number(curr)] ).speakerOutputValue.ID.toString(2), 16) +
 		makeLength((game.instructions[Number(curr)] ).volumeValue.ID.toString(2), 16) +
 		makeLength((game.instructions[Number(curr)] ).frequencyValue.ID.toString(2), 16) +
 		makeLength((game.instructions[Number(curr)] ).durationValue.ID.toString(2), 16)

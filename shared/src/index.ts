@@ -36,4 +36,5 @@ export * from '../model/values/textValue';
 export * from '../model/values/value';
 export * from '../model/values/imageValue';
 export * from '../model/values/dataValue';
+export * from '../model/values/speakerOutputValue';
 export * from '../model/values/numberArrayValueType';
