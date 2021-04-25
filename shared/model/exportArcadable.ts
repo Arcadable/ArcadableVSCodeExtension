@@ -5,11 +5,12 @@ const fp = require('ieee-float');
 
 export function exportArcadable(game: any): Uint8Array {
 	let binaryString = '';
-	
-	let tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.analogInputPointer).reduce((acc, curr) =>
+
+
+	let tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.analogInputPointer).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)]).index.toString(2), 8)
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)]).index.toString(2), 8)
 		,
 		makeLength(ValueType.analogInputPointer.toString(2), 8)
 	);
@@ -18,10 +19,10 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 	
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.digitalInputPointer).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.digitalInputPointer).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).index.toString(2), 8)
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).index.toString(2), 8)
 		,
 		makeLength(ValueType.digitalInputPointer.toString(2), 8)
 	);
@@ -30,10 +31,10 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.speakerOutputPointer).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.speakerOutputPointer).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).index.toString(2), 8)
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).index.toString(2), 8)
 		,
 		makeLength(ValueType.speakerOutputPointer.toString(2), 8)
 	);
@@ -42,13 +43,13 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 	
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.evaluation).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.evaluation).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).evaluationOperator.toString(2), 7) +
-		((game.values[Number(curr)] ).isStatic ? '1' : '0') +
-		makeLength((game.values[Number(curr)] ).left.ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).right.ID.toString(2), 16)
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).evaluationOperator.toString(2), 7) +
+		((game.unchangedValues[Number(curr)] ).isStatic ? '1' : '0') +
+		makeLength((game.unchangedValues[Number(curr)] ).left.ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).right.ID.toString(2), 16)
 		,
 		makeLength(ValueType.evaluation.toString(2), 8)
 	);
@@ -57,11 +58,11 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 	
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.listDeclaration).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.listDeclaration).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).size.toString(2), 16) +
-		(game.values[Number(curr)] ).values.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '')
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).size.toString(2), 16) +
+		(game.unchangedValues[Number(curr)] ).values.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '')
 		,
 		makeLength(ValueType.listDeclaration.toString(2), 8)
 	);
@@ -70,11 +71,11 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 	
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.listValue).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.listValue).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).listValue.ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).listIndex.ID.toString(2), 16)
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).listValue.ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).listIndex.ID.toString(2), 16)
 		,
 		makeLength(ValueType.listValue.toString(2), 8)
 	);
@@ -83,11 +84,11 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 	
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.number).reduce((acc, curr) => {
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.number).reduce((acc, curr) => {
 			const output: number[] = [];
-			fp.writeFloatBE(output, (game.values[Number(curr)] ).value);
+			fp.writeFloatBE(output, (game.unchangedValues[Number(curr)] ).value);
 			return acc +
-				makeLength(game.values[Number(curr)].ID.toString(2), 16) +
+				makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
 				output.reduce((a, c) => a + makeLength(c.toString(2), 8), '');
 		},
 		makeLength(ValueType.number.toString(2), 8)
@@ -97,11 +98,11 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 	
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.pixelIndex).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.pixelIndex).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).XCalc.ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).YCalc.ID.toString(2), 16)
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).XCalc.ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).YCalc.ID.toString(2), 16)
 		,
 		makeLength(ValueType.pixelIndex.toString(2), 8)
 	);
@@ -110,13 +111,13 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.image).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.image).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).data.ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).width.ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).height.ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).keyColor.ID.toString(2), 16)
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).data.ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).width.ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).height.ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).keyColor.ID.toString(2), 16)
 		,
 		makeLength(ValueType.image.toString(2), 8)
 	);
@@ -125,11 +126,11 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.data).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.data).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).size.toString(2), 16) +
-		((game.values[Number(curr)]).data ).reduce((a, c) => a + makeLength(c.toString(2), 8), '')
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).size.toString(2), 16) +
+		((game.unchangedValues[Number(curr)]).data ).reduce((a, c) => a + makeLength(c.toString(2), 8), '')
 		,
 		makeLength(ValueType.data.toString(2), 8)
 	);
@@ -138,10 +139,10 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.systemPointer).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.systemPointer).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).configType.toString(2), 8)
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).configType.toString(2), 8)
 		,
 		makeLength(ValueType.systemPointer.toString(2), 8)
 	);
@@ -150,11 +151,11 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 	
-	tempBinaryString = Object.keys(game.values).filter(k => game.values[Number(k)].type === ValueType.text).reduce((acc, curr) =>
+	tempBinaryString = Object.keys(game.unchangedValues).filter(k => game.unchangedValues[Number(k)].type === ValueType.text).reduce((acc, curr) =>
 		acc +
-		makeLength(game.values[Number(curr)].ID.toString(2), 16) +
-		makeLength((game.values[Number(curr)] ).size.toString(2), 8) +
-		(game.values[Number(curr)]).values.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '')
+		makeLength(game.unchangedValues[Number(curr)].ID.toString(2), 16) +
+		makeLength((game.unchangedValues[Number(curr)] ).size.toString(2), 8) +
+		(game.unchangedValues[Number(curr)]).values.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '')
 		,
 		makeLength(ValueType.text.toString(2), 8)
 	);
@@ -340,7 +341,7 @@ export function exportArcadable(game: any): Uint8Array {
 		,
 		makeLength((InstructionType.MutateValue + 128).toString(2), 8)
 	);
-	if(tempBinaryString.length > 8) {
+	if(tempBinaryString > 8) {
 		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
 		binaryString += tempBinaryString;
 	}
@@ -463,18 +464,27 @@ export function exportArcadable(game: any): Uint8Array {
 		binaryString += tempBinaryString;
 	}
 
+	const setupSet = game.instructionSets[game.setupInstructionSet];
 	const mainSet = game.instructionSets[game.mainInstructionSet];
 	const renderSet = game.instructionSets[game.renderInstructionSet];
 	tempBinaryString = makeLength((InstructionType.InstructionSet + 128).toString(2), 8) +
+		makeLength(setupSet.ID.toString(2), 16) +
+		(setupSet.async ? '1' : '0') +
+		makeLength(setupSet.size.toString(2), 15) +
+		setupSet.instructions.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '') +
 		makeLength(mainSet.ID.toString(2), 16) +
 		(mainSet.async ? '1' : '0') +
 		makeLength(mainSet.size.toString(2), 15) +
 		mainSet.instructions.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '') +
 		makeLength(renderSet.ID.toString(2), 16) +
-		(mainSet.async ? '1' : '0') +
-		makeLength(mainSet.size.toString(2), 15) +
+		(renderSet.async ? '1' : '0') +
+		makeLength(renderSet.size.toString(2), 15) +
 		renderSet.instructions.reduce((a, c) => a + makeLength(c.ID.toString(2), 16), '') +
-		Object.keys(game.instructionSets).filter(k => +k !== game.mainInstructionSet && +k !== game.renderInstructionSet).reduce((acc, curr) =>
+		Object.keys(game.instructionSets).filter(k =>
+			+k !== game.setupInstructionSet &&
+			+k !== game.mainInstructionSet &&
+			+k !== game.renderInstructionSet
+		).reduce((acc, curr) =>
 			acc +
 			makeLength(game.instructionSets[Number(curr)].ID.toString(2), 16) +
 			(game.instructionSets[Number(curr)].async ? '1' : '0') +

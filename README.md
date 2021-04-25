@@ -97,14 +97,20 @@ varName = 5;
 All functions are global.
 Functions: 
 ```
-// Compiler requires two default functions to be present at all times.
+// Compiler requires three default functions to be present at all times.
 
-// The main function is called a certain amount of times, based on the "mainsPerSecond" property in arcadable.config.json.
+// The setup function is called once when the code is started
+setup: Function {
+
+}
+
+
+// The main function is called as often as possible
 main: Function {
 
 }
 
-// The render function is called a certain amount of times, based on the "rendersPerSecond" property in arcadable.config.json.
+// The render function is called before led color values are pushed to the leds
 render: Function {
 
 }

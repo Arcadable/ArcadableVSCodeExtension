@@ -82,9 +82,25 @@ export class ArcadableCompiler {
 
 				this.compileResult.compileErrors = gameData.compileErrors;
 				if (this.compileResult.compileErrors.length === 0) {
+					const setupInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'setup') !== -1);
 					const mainInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
 					const renderInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'render') !== -1);
-	
+					
+					if (setupInstructionSet === -1) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Cannot find "Setup" function'
+						})
+					} else if(gameData.compressedInstructionSets[setupInstructionSet].async) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Setup function cannot be asynchronous'
+						})
+					}
 					if (mainInstructionSet === -1) {
 						this.compileResult.compileErrors.push({
 							file: '',
@@ -116,7 +132,7 @@ export class ArcadableCompiler {
 						})
 					}
 					
-					if (mainInstructionSet !== -1 && renderInstructionSet !== -1) {
+					if (setupInstructionSet !== -1 && mainInstructionSet !== -1 && renderInstructionSet !== -1) {
 						this.compileResult.assignGameData(gameData);
 					}
 				}
@@ -1050,112 +1066,10 @@ export class CompileResult {
 	
 	assignGameData(gameData: ParsedProgram) {
 		this.parsedProgram = gameData;
-		const values = gameData.compressedValues.map((v, i) => {
-			switch(v.type) {
-				
-				case ValueType.analogInputPointer: {
-					return new AnalogInputValue(i, +v.value, '', this.game);
-				}
-				case ValueType.digitalInputPointer: {
-					return new DigitalInputValue(i, +v.value, '', this.game);
-				}
-				case ValueType.speakerOutputPointer: {
-					return new SpeakerOutputValue(i, +v.value, '', this.game);
-				}
-				case ValueType.evaluation: {
-					return new EvaluationValue(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+v.value.left, this.game),
-						new NumberValueTypePointer<NumberValueType>(+v.value.right, this.game),
-						v.value.evaluation,
-						v.value.static,
-						'',
-						this.game
-					);
-				}
-				case ValueType.listValue: {
-					return new ListValue(
-						i,
-						new ValueArrayValueTypePointer<ValueArrayValueType>(+v.value.list, this.game),
-						new NumberValueTypePointer<NumberValueType>(+v.value.index, this.game),
-						'',
-						this.game
-					);
-				}
-				case ValueType.listDeclaration: {
-					switch (v.value.type) {
-						case ValueType.analogInputPointer:
-						case ValueType.digitalInputPointer:
-						case ValueType.evaluation:
-						case ValueType.number:
-						case ValueType.pixelIndex:
-						case ValueType.systemPointer: {
-							return new ListDeclaration(
-								i,
-								v.value.values.length,
-								v.value.values.map(value => new NumberValueTypePointer<NumberValueType>(+value, this.game)),
-								'',
-								this.game
-							);
-						}
-						case ValueType.text: {
+		const values = this.getValuesMap(gameData);
+		const unchangedValues = this.getValuesMap(gameData);
 
-							return new ListDeclaration(
-								i,
-								v.value.values.length,
-								v.value.values.map(value => new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+value, this.game)),
-								'',
-								this.game
-							);
-						}
-					}
 
-				}
-				case ValueType.number: {
-					return new NumberValue(i, +v.value, 4, '', this.game);
-				}
-				case ValueType.pixelIndex: {
-					return new PixelValue(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+v.value.x, this.game),
-						new NumberValueTypePointer<NumberValueType>(+v.value.y, this.game),
-						'',
-						this.game
-					);
-				}
-				case ValueType.systemPointer: {
-					return new SystemConfigValue(i, +v.value, '', this.game);
-				}
-				case ValueType.text: {
-					return new TextValue(
-						i,
-						v.value.values.map(value => new NumberValueTypePointer<NumberValueType>(+value, this.game)),
-						v.value.values.length,
-						'',
-						this.game
-					);
-				}
-				case ValueType.data: {
-					return new DataValue(
-						i,
-						gameData.data[v.value],
-						'',
-						this.game
-					);
-				}
-				case ValueType.image: {
-					return new ImageValue(
-						i,
-						new NumberArrayValueTypePointer<DataValue>(+v.value.data, this.game),
-						new NumberValueTypePointer<NumberValueType>(+v.value.width, this.game),
-						new NumberValueTypePointer<NumberValueType>(+v.value.height, this.game),
-						new NumberValueTypePointer<NumberValueType>(+v.value.keyColor, this.game),
-						'',
-						this.game
-					);
-				}
-			}
-		});
 		const instructions = gameData.compressedInstructions.map((inst, i) => {
 			switch(inst.type) {
 				case InstructionType.Clear : {
@@ -1390,15 +1304,127 @@ export class CompileResult {
 			'',
 			this.game
 		));
+		const setupInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'setup') !== -1);
 		const mainInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
 		const renderInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'render') !== -1);
 
 		this.game.setGameLogic(
+			unchangedValues,
 			values,
 			instructions,
 			instructionSets,
+			setupInstructionSet,
 			mainInstructionSet,
 			renderInstructionSet
 		);
+	}
+
+	getValuesMap(gameData: ParsedProgram): {[key: number]: Value} {
+		return gameData.compressedValues.map((v, i) => {
+			switch(v.type) {
+				
+				case ValueType.analogInputPointer: {
+					return new AnalogInputValue(i, +v.value, '', this.game);
+				}
+				case ValueType.digitalInputPointer: {
+					return new DigitalInputValue(i, +v.value, '', this.game);
+				}
+				case ValueType.speakerOutputPointer: {
+					return new SpeakerOutputValue(i, +v.value, '', this.game);
+				}
+				case ValueType.evaluation: {
+					return new EvaluationValue(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+v.value.left, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.right, this.game),
+						v.value.evaluation,
+						v.value.static,
+						'',
+						this.game
+					);
+				}
+				case ValueType.listValue: {
+					return new ListValue(
+						i,
+						new ValueArrayValueTypePointer<ValueArrayValueType>(+v.value.list, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.index, this.game),
+						'',
+						this.game
+					);
+				}
+				case ValueType.listDeclaration: {
+					switch (v.value.type) {
+						case ValueType.analogInputPointer:
+						case ValueType.digitalInputPointer:
+						case ValueType.evaluation:
+						case ValueType.number:
+						case ValueType.pixelIndex:
+						case ValueType.systemPointer: {
+							return new ListDeclaration(
+								i,
+								v.value.values.length,
+								v.value.values.map(value => new NumberValueTypePointer<NumberValueType>(+value, this.game)),
+								'',
+								this.game
+							);
+						}
+						case ValueType.text: {
+
+							return new ListDeclaration(
+								i,
+								v.value.values.length,
+								v.value.values.map(value => new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+value, this.game)),
+								'',
+								this.game
+							);
+						}
+					}
+
+				}
+				case ValueType.number: {
+					return new NumberValue(i, +v.value, 4, '', this.game);
+				}
+				case ValueType.pixelIndex: {
+					return new PixelValue(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+v.value.x, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.y, this.game),
+						'',
+						this.game
+					);
+				}
+				case ValueType.systemPointer: {
+					return new SystemConfigValue(i, +v.value, '', this.game);
+				}
+				case ValueType.text: {
+					return new TextValue(
+						i,
+						v.value.values.map(value => new NumberValueTypePointer<NumberValueType>(+value, this.game)),
+						v.value.values.length,
+						'',
+						this.game
+					);
+				}
+				case ValueType.data: {
+					return new DataValue(
+						i,
+						gameData.data[v.value],
+						'',
+						this.game
+					);
+				}
+				case ValueType.image: {
+					return new ImageValue(
+						i,
+						new NumberArrayValueTypePointer<DataValue>(+v.value.data, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.width, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.height, this.game),
+						new NumberValueTypePointer<NumberValueType>(+v.value.keyColor, this.game),
+						'',
+						this.game
+					);
+				}
+			}
+		});
 	}
 }

@@ -74,10 +74,16 @@ connection.onInitialized(() => {
 	}
 });
 
-
+let timeSinceChange = 0;
 documents.onDidChangeContent(change => {
+	timeSinceChange = new Date().getTime();
+	setTimeout(() => {
+		const currMillis = new Date().getTime();
+		if(currMillis - timeSinceChange >= 995) {
+			validateTextDocument(change.document);
+		}
+	}, 1000);
 
-	validateTextDocument(change.document);
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
@@ -89,7 +95,6 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 		file: data.filePath,
 		executables: data.functionParseResults
 	};
-
 
 	functionParseResultExecutables.executables.forEach(executable => {
 
@@ -124,7 +129,6 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 		};
 		diagnostics.push(diagnostic);
 	});
-
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 

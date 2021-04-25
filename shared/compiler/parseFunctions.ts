@@ -961,12 +961,14 @@ export function GetParseFunctionExecutable(section: string, otherMatchWithType: 
 
 			} else {
 				continueSearch = false;
+				result.errors.push({ error: 'Closing bracket not found', pos: 0, line: lineNumber + 1 });
 			}
 		}
 
 		result.functionParseExecutable = () => parseInstructionSet(lineNumber, functionLines, name, !!async);
 		result.parsedCount += parsedLinesCount;
 	} else {
+		result.parsedCount = 1;
 		result.errors.push({ error: 'Incorrect function format', pos: otherMatchWithType[0].length, line: lineNumber + 1 });
 	}
 	return result;

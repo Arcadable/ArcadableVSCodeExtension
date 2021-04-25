@@ -193,7 +193,7 @@ export class Emulator {
 				if (compileResult.compileErrors.length > 0) {
 					this.log.appendLine('Compile errors (' + compileResult.compileErrors.length + '):');
 					compileResult.compileErrors.forEach((e, i) => {
-						this.log.appendLine(i + ' - ' + e.file.replace(vscode.workspace.rootPath, '') + ':' + e.line + ':' + e.pos + ' - ' + e.error);
+						this.log.appendLine(i + ' - ' + e.file + ':' + e.line + ':' + e.pos + ' - ' + e.error);
 					})
 				}
 			}

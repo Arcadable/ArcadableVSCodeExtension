@@ -27,6 +27,10 @@ export class InstructionSet extends LogicElement {
                         const newExecutable = new Executable(async () => instruction.getExecutables(this.async), this.async, instruction.await(), [], null, () => (this.game.instructions[instruction.ID] as WaitInstruction).amountValue.getValue());
                         return [...accumulative, newExecutable];
                     }
+                    case InstructionType.RunCondition: {
+                        const newExecutable = new Executable(async () => instruction.getExecutables(this.async), this.async, this.async, [], null, null);
+                        return [...accumulative, newExecutable];
+                    }
                     case InstructionType.Tone: {
                         if(instruction.await()) {
                             const newExecutable = new Executable(async () => instruction.getExecutables(this.async), this.async, false, [], null, null);

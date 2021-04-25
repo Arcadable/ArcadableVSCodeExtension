@@ -11,9 +11,12 @@ export class Arcadable {
 	instructionEmitter = new Subject<any>();
 	interruptedEmitter = new Subject<any>();
 
+	unchangedValues: {[key: number]: Value} = {};
+
     values: {[key: number]: Value} = {};
     instructions: {[key: number]: Instruction} = {};
-    instructionSets: {[key: number]: InstructionSet} = {};
+	instructionSets: {[key: number]: InstructionSet} = {};
+	setupInstructionSet: number = 0;
 	mainInstructionSet: number = 0;
 	renderInstructionSet: number = 0;
     systemConfig: SystemConfig;
@@ -21,7 +24,7 @@ export class Arcadable {
 	prevMainMillis = 0;
 	prevRenderMillis = 0;
 	startMillis = 0;
-	
+
 	mainCallStack: CallStack = new CallStack();
 	renderCallStack: CallStack = new CallStack();
 
@@ -33,19 +36,24 @@ export class Arcadable {
     }
 
     setGameLogic(
-    	values: {[key: number]: Value},
+		unchangedValues: {[key: number]: Value},
+		values: {[key: number]: Value},
     	instructions: {[key: number]: Instruction},
-    	instructionSets: {[key: number]: InstructionSet},
+		instructionSets: {[key: number]: InstructionSet},
+		setupInstructionSet: number,
 		mainInstructionSet: number,
 		renderInstructionSet: number
-    ) {
+    ) {		
+		Object.keys(this.unchangedValues).forEach(k => (this.unchangedValues[+k] as any).game = undefined );
 		Object.keys(this.values).forEach(k => (this.values[+k] as any).game = undefined );
 		Object.keys(this.instructions).forEach(k => (this.instructions[+k] as any).game = undefined );
 		Object.keys(this.instructionSets).forEach(k => (this.instructionSets[+k] as any).game = undefined );
-
+		
+		this.unchangedValues = unchangedValues;
     	this.values = values;
     	this.instructions = instructions;
-    	this.instructionSets = instructionSets;
+		this.instructionSets = instructionSets;
+		this.setupInstructionSet = setupInstructionSet;
 		this.mainInstructionSet = mainInstructionSet;
 		this.renderInstructionSet = renderInstructionSet;
 
@@ -67,7 +75,8 @@ export class Arcadable {
 	}
 	stop(error?: {message: string, values: number[], instructions: number[]}) {
 		this.interruptedEmitter.next(error);
-    }
+	}
+
 	startRender() {
 		const timerSubscr = timer(0, this.systemConfig.targetRenderMillis).subscribe(async () => {
 			try {
@@ -83,12 +92,14 @@ export class Arcadable {
 	}
 
 	startMain() {
+		let first = true;
 		const timerSubscr = timer(0, this.systemConfig.targetMainMillis).subscribe(async () => {
 			try {
-				await this.doMainStep();
+				await this.doMainStep(first);
 			} catch (e) {
 				this.instructionEmitter.next({message: 'An unexpected error occured.'});
 			}
+			first = false;
 		});
 		const interruptSubscr = this.interruptedEmitter.subscribe(e => {
 			timerSubscr.unsubscribe();
@@ -96,8 +107,7 @@ export class Arcadable {
 		})
 	}
 
-
-    private async doMainStep() {
+    private async doMainStep(first: boolean) {
 		this.systemConfig.fetchInputValues();
 		this.mainCallStack.prepareStep();
     	const mainInstructionSet = this.instructionSets[
@@ -105,8 +115,31 @@ export class Arcadable {
 		] as InstructionSet;
 		this.mainCallStack.pushfront(...(await mainInstructionSet.getExecutables()));
 
+		if(first) {
+			const setupInstructionSet = this.instructionSets[
+				this.setupInstructionSet
+			] as InstructionSet;
+			this.mainCallStack.pushfront(...(await setupInstructionSet.getExecutables()));
+		}
+
 		this.processCallStack(this.mainCallStack);
 	}
+
+	private async doRenderStep() {
+		this.renderCallStack.prepareStep();
+
+    	const renderInstructionSet = this.instructionSets[
+    		this.renderInstructionSet
+		] as InstructionSet;
+
+		this.renderCallStack.pushfront(...(await renderInstructionSet.getExecutables()));
+		this.renderCallStack.pushback(new Executable(async () => {
+			this.instructionEmitter.next({command: 'renderDone'});
+			return [];
+		}, false, false, [], null, null));
+		this.processCallStack(this.renderCallStack);
+
+    }
 
 	private async processCallStack(callStack: CallStack) {
 		if(callStack.size() > 0) {
@@ -154,20 +187,6 @@ export class Arcadable {
 		}
 	}
 
-	private async doRenderStep() {
-		this.renderCallStack.prepareStep();
 
-    	const renderInstructionSet = this.instructionSets[
-    		this.renderInstructionSet
-		] as InstructionSet;
-
-		this.renderCallStack.pushfront(...(await renderInstructionSet.getExecutables()));
-		this.renderCallStack.pushback(new Executable(async () => {
-			this.instructionEmitter.next({command: 'renderDone'});
-			return [];
-		}, false, false, [], null, null));
-		this.processCallStack(this.renderCallStack);
-
-    }
 
 }
