@@ -341,7 +341,7 @@ export function exportArcadable(game: any): Uint8Array {
 		,
 		makeLength((InstructionType.MutateValue + 128).toString(2), 8)
 	);
-	if(tempBinaryString > 8) {
+	if(tempBinaryString.length > 8) {
 		binaryString += makeLength((tempBinaryString.length / 8).toString(2), 16);
 		binaryString += tempBinaryString;
 	}

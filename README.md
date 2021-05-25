@@ -28,7 +28,7 @@ varName: Pixel = [5, 5];
 varName: Pixel = [pixelPosXVar, pixelPosYVar];
 
 // System config value, represents system information.
-// Available values: ScreenHeight, ScreenWidth, TargetMainMillis, TargetRenderMillis, CurrentMillis, IsZigZag
+// Available values: ScreenHeight, ScreenWidth, CurrentMillis, IsZigZag
 // Truthy if value resolves to != 0
 varName: Config = ScreenHeight;
 

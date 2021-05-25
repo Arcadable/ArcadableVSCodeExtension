@@ -303,7 +303,7 @@ export function ParseValueConfig(section: string, otherMatchWithType: RegExpMatc
 		value: null,
 		errors: []
 	};
-	const configMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Config( *)=( *)(ScreenHeight|ScreenWidth|TargetMainMillis|TargetRenderMillis|CurrentMillis|IsZigZag)END_OF_SECTION$/g) as RegExpMatchArray;
+	const configMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Config( *)=( *)(ScreenHeight|ScreenWidth|CurrentMillis|IsZigZag)END_OF_SECTION$/g) as RegExpMatchArray;
 	if (configMatch) {
 		const value = configMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
 		let configType = getSystemConfigType(value);
@@ -313,7 +313,7 @@ export function ParseValueConfig(section: string, otherMatchWithType: RegExpMatc
 			name
 		};
 	} else {
-		result.errors.push({ error: 'Unknown system config identifier (known identifiers: ScreenHeight, ScreenWidth, TargetMainMillis, TargetRenderMillis, CurrentMillis, IsZigZag) or missing ";"', pos: otherMatchWithType[0].length });
+		result.errors.push({ error: 'Unknown system config identifier (known identifiers: ScreenHeight, ScreenWidth, CurrentMillis, IsZigZag) or missing ";"', pos: otherMatchWithType[0].length });
 	}
 	return result;
 }
@@ -711,7 +711,7 @@ export function ParseValueListConfig(section: string, otherMatchWithType: RegExp
 		const values = value.replace('[', '').replace(']', '').replace(/\s/g, '').split(',');
 		const actualValues: string[] = [];
 		values.forEach((v, i) => {
-			const configMatch = v.match(/ScreenHeight|ScreenWidth|TargetMainMillis|TargetRenderMillis|CurrentMillis|IsZigZag/g);
+			const configMatch = v.match(/ScreenHeight|ScreenWidth|CurrentMillis|IsZigZag/g);
 			if(configMatch) {
 				const subName = name + '-sub' + i;
 				let configType = getSystemConfigType(v);
@@ -1572,8 +1572,6 @@ function getSystemConfigType(value: string): SystemConfigType {
 	switch (value) {
 		case 'ScreenHeight': return SystemConfigType.screenHeight;
 		case 'ScreenWidth': return SystemConfigType.screenWidth;
-		case 'TargetMainMillis': return SystemConfigType.targetMainMillis;
-		case 'TargetRenderMillis': return SystemConfigType.targetRenderMillis;
 		case 'CurrentMillis': return SystemConfigType.currentMillis;
 		case 'IsZigZag': return SystemConfigType.isZigZag;
 	}
