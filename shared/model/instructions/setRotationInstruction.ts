@@ -1,3 +1,4 @@
+import { Executable } from './../callStack';
 import { Arcadable } from '../arcadable';
 import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 import { Instruction, InstructionType } from './instruction';
@@ -8,21 +9,23 @@ export class SetRotationInstruction extends Instruction {
         ID: number,
         public rotationValue: NumberValueTypePointer<NumberValueType>,
         name: string,
-        game: Arcadable
+        game: Arcadable,
+		public await: boolean,
     ) {
-        super(ID, InstructionType.SetRotation, name, game);
+        super(ID, InstructionType.SetRotation, name, game, await);
     }
 
 
-    execute(): (() => Promise<any>)[] {
-        return [async () => {
+    async getExecutables(async: boolean): Promise<Executable[]> {
+        return [new Executable(async () => {
             const rotation = await this.rotationValue.getValue();
 
             this.game.instructionEmitter.next({
                 command: 'setRotation',
                 rotation,
             });
-        }];
+            return [];
+        }, async, false, [], null, null)];
     }
 
 }

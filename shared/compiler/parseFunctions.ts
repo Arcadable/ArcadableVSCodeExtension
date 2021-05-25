@@ -215,6 +215,28 @@ export function ParseValueDigital(section: string, otherMatchWithType: RegExpMat
 	return result;
 }
 
+export function ParseValueSpeaker(section: string, otherMatchWithType: RegExpMatchArray) {
+	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
+	const name = values[0];
+	const result: ValueParseResult = {
+		value: null,
+		errors: []
+	};
+	const speakerMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)Speaker( *)=( *)(([0-9]+))END_OF_SECTION$/g) as RegExpMatchArray;
+	if (speakerMatch) {
+		const value = speakerMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
+		result.value = {
+			type: ValueType.speakerOutputPointer,
+			value,
+			name
+		};
+	} else {
+		result.errors.push({ error: 'Incorrect speaker index format or missing ";"', pos: otherMatchWithType[0].length });
+	}
+	return result;
+}
+
+
 export function ParseValuePixel(section: string, otherMatchWithType: RegExpMatchArray) {
 	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
 	const name = values[0];
@@ -281,7 +303,7 @@ export function ParseValueConfig(section: string, otherMatchWithType: RegExpMatc
 		value: null,
 		errors: []
 	};
-	const configMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Config( *)=( *)(ScreenHeight|ScreenWidth|TargetMainMillis|TargetRenderMillis|CurrentMillis|IsZigZag)END_OF_SECTION$/g) as RegExpMatchArray;
+	const configMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Config( *)=( *)(ScreenHeight|ScreenWidth|CurrentMillis|IsZigZag)END_OF_SECTION$/g) as RegExpMatchArray;
 	if (configMatch) {
 		const value = configMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split('=')[1];
 		let configType = getSystemConfigType(value);
@@ -291,7 +313,7 @@ export function ParseValueConfig(section: string, otherMatchWithType: RegExpMatc
 			name
 		};
 	} else {
-		result.errors.push({ error: 'Unknown system config identifier (known identifiers: ScreenHeight, ScreenWidth, TargetMainMillis, TargetRenderMillis, CurrentMillis, IsZigZag) or missing ";"', pos: otherMatchWithType[0].length });
+		result.errors.push({ error: 'Unknown system config identifier (known identifiers: ScreenHeight, ScreenWidth, CurrentMillis, IsZigZag) or missing ";"', pos: otherMatchWithType[0].length });
 	}
 	return result;
 }
@@ -689,7 +711,7 @@ export function ParseValueListConfig(section: string, otherMatchWithType: RegExp
 		const values = value.replace('[', '').replace(']', '').replace(/\s/g, '').split(',');
 		const actualValues: string[] = [];
 		values.forEach((v, i) => {
-			const configMatch = v.match(/ScreenHeight|ScreenWidth|TargetMainMillis|TargetRenderMillis|CurrentMillis|IsZigZag/g);
+			const configMatch = v.match(/ScreenHeight|ScreenWidth|CurrentMillis|IsZigZag/g);
 			if(configMatch) {
 				const subName = name + '-sub' + i;
 				let configType = getSystemConfigType(v);
@@ -880,12 +902,14 @@ export function ParseValueListEval(section: string, otherMatchWithType: RegExpMa
 }
 
 export interface FunctionParseResult {
-    name: string,
+	name: string,
+	async: boolean;
     instructions: {
         line: number,
         pos: number,
         type: InstructionType,
-        params: string[]
+		params: string[],
+		await: boolean
     }[],
     values: {
         type: ValueType,
@@ -897,7 +921,7 @@ export interface FunctionParseResult {
     errors: {error: string, pos: number, line: number}[]
 }
 
-export function GetParseFunctionExecutable(section: string, otherMatchWithType: RegExpMatchArray, lineNumber: number, lines: string[]): {functionParseExecutable: () => FunctionParseResult[], errors: {error: string, pos: number, line: number}[], parsedCount: number} {
+export function GetParseFunctionExecutable(section: string, otherMatchWithType: RegExpMatchArray, lineNumber: number, lines: string[], async?: boolean): {functionParseExecutable: () => FunctionParseResult[], errors: {error: string, pos: number, line: number}[], parsedCount: number} {
 	const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
 	const name = values[0];
 	const line = lines[lineNumber];
@@ -907,7 +931,8 @@ export function GetParseFunctionExecutable(section: string, otherMatchWithType: 
 		errors: [],
 		parsedCount: 0
 	};
-	const functionStartMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)Function( *){( *)END_OF_SECTION$/g) as RegExpMatchArray;
+	const functionStartMatch = section.match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*:( *)(AsyncFunction|Function)( *){( *)END_OF_SECTION$/g) as RegExpMatchArray;
+
 	if (functionStartMatch) {
 		let functionLines: string[] = [];
 		let functionLineNumber = lineNumber;
@@ -936,24 +961,27 @@ export function GetParseFunctionExecutable(section: string, otherMatchWithType: 
 
 			} else {
 				continueSearch = false;
+				result.errors.push({ error: 'Closing bracket not found', pos: 0, line: lineNumber + 1 });
 			}
 		}
 
-		result.functionParseExecutable = () => parseInstructionSet(lineNumber, functionLines, name);
+		result.functionParseExecutable = () => parseInstructionSet(lineNumber, functionLines, name, !!async);
 		result.parsedCount += parsedLinesCount;
 	} else {
+		result.parsedCount = 1;
 		result.errors.push({ error: 'Incorrect function format', pos: otherMatchWithType[0].length, line: lineNumber + 1 });
 	}
 	return result;
 }
 
-function parseInstructionSet(instructionSetStartLine: number, lines: string[], name: string): FunctionParseResult[] {
+function parseInstructionSet(instructionSetStartLine: number, lines: string[], name: string, async: boolean): FunctionParseResult[] {
 	const resultList: FunctionParseResult[] = [];
 	const result: FunctionParseResult = {
 		name,
 		instructions: [],
 		values: [],
-		errors: []
+		errors: [],
+		async
 	}; 
 	for (let lineNumber = 0; lineNumber < lines.length;) {
 		const line = lines[lineNumber];
@@ -970,10 +998,12 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 				char = section.charAt(position);
 			}
 			const drawMatch = section.substr(position).match(/^draw\./g) as RegExpMatchArray;
-			const executeMatch = section.substr(position).match(/^execute/g) as RegExpMatchArray;
+			const executeMatch = section.substr(position).match(/^(await( +?))?execute/g) as RegExpMatchArray;
 			const mutateMatch = section.substr(position).match(/^(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)=/g) as RegExpMatchArray;
 			const conditionMatch = section.substr(position).match(/^if/g) as RegExpMatchArray;
-			const debugMatch = section.substr(position).match(/^debug\.log/g) as RegExpMatchArray;
+			const debugMatch = section.substr(position).match(/^log/g) as RegExpMatchArray;
+			const waitMatch = section.substr(position).match(/^wait/g) as RegExpMatchArray;
+			const toneMatch = section.substr(position).match(/^(await( +?))?tone/g) as RegExpMatchArray;
 
 			if (drawMatch) {
 				const drawMatchType = section.substr(position).match(/^draw\.(clear|(drawPixel|drawText|drawCircle|drawImage|fillCircle|drawRect|fillRect|drawTriangle|fillTriangle|drawLine|setRotation))/g) as RegExpMatchArray;
@@ -982,12 +1012,14 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
                         line: number;
                         pos: number;
                         type: InstructionType;
-                        params: string[];
+						params: string[];
+						await: boolean;
                     } = {
                     	type: -1,
                     	params: [],
                     	line: instructionSetStartLine + lineNumber + 2,
-                    	pos: position + totalPosition,
+						pos: position + totalPosition,
+						await: false
                     };
 					switch (drawMatchType[0]) {
 						case 'draw.clear': {
@@ -1145,24 +1177,66 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					result.errors.push({ error: 'Unexpected draw type', pos: position + totalPosition, line: instructionSetStartLine + lineNumber + 2 });
 				}
 			} else if (executeMatch) {
-				const executeMatchFormat = section.substr(position).match(/^execute\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+				const executeMatchFormat = section.substr(position).match(/^(await( +?))?execute\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 				if (executeMatchFormat) {
-					const func = executeMatchFormat[0].replace(/\s/g, '').replace('execute(', '').replace(')END_OF_SECTION', '');
+					const await = section.substr(position).startsWith('await');
+					const func = executeMatchFormat[0].replace(/\s/g, '').replace('await', '').replace(/\s/g, '').replace('execute(', '').replace(')END_OF_SECTION', '');
 					result.instructions.push({
 						type: InstructionType.RunSet,
 						params: [func],
 						line: instructionSetStartLine + lineNumber + 2,
 						pos: position + totalPosition,
+						await
 					});
+					if(await && !async) {
+						result.errors.push({ error: 'Cannot use await in function that is not asynchronous', pos: position + totalPosition + executeMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+					}
 				} else {
-					result.errors.push({ error: 'Unexpected execute format ("execute(myFunction)"), or missing ";"', pos: position + totalPosition + executeMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+					result.errors.push({ error: 'Unexpected execute format ("execute(myFunction)" or "await execute(myFunction)"), or missing ";"', pos: position + totalPosition + executeMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+				}
+			} else if (toneMatch) {
+				const toneMatchFormat = section.substr(position).match(/^(await( +?))?tone\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *),( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+				if (toneMatchFormat) {
+					const await = section.substr(position).startsWith('await');
+					const params = toneMatchFormat[0].replace(/\s/g, '').replace('await', '').replace(/\s/g, '').replace('tone(', '').replace(')END_OF_SECTION', '').split(',');
+
+					const actualParams: string[] = [];
+					params.forEach((p, i) => {
+						const parsedParam = Number.parseFloat(p);
+						if(!Number.isNaN(parsedParam)) {
+							const subParamName = 'tone - ' + name + (instructionSetStartLine + lineNumber + 2) + '-param-' + i;
+							result.values.push({
+								name: subParamName,
+								type: ValueType.number,
+								value: parsedParam,
+								line: instructionSetStartLine + lineNumber + 2,
+								pos: position + totalPosition
+							});
+							actualParams.push(subParamName);
+						} else {
+							actualParams.push(p);
+						}
+					});
+					
+					result.instructions.push({
+						type: InstructionType.Tone,
+						params: actualParams,
+						line: instructionSetStartLine + lineNumber + 2,
+						pos: position + totalPosition,
+						await
+					});
+					if(await && !async) {
+						result.errors.push({ error: 'Cannot use await in function that is not asynchronous', pos: position + totalPosition + toneMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+					}
+				} else {
+					result.errors.push({ error: 'Unexpected tone format ("tone(mySpeaker, myVolume, myFrequency, myDuration)" or "await tone(mySpeaker, myVolume, myFrequency, myDuration)"), or missing ";"', pos: position + totalPosition + toneMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 				}
 			} else if (debugMatch) {
-				const debugMatchFormat = section.substr(position).match(/^debug\.log\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+				const debugMatchFormat = section.substr(position).match(/^log\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
 				if (debugMatchFormat) {
 					const debugName = 'debug -' + name + '-' + (instructionSetStartLine + lineNumber + 2) + '-' + (position + totalPosition + debugMatch[0].length);
 
-					let value = debugMatchFormat[0].replace(/\s/g, '').replace('debug.log(', '').replace(')END_OF_SECTION', '');
+					let value = debugMatchFormat[0].replace(/\s/g, '').replace('log(', '').replace(')END_OF_SECTION', '');
 					const parsedValue = Number.parseFloat(value);
 					if(!Number.isNaN(parsedValue)) {
 						const subValueName = debugName + '-value';
@@ -1181,9 +1255,39 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 						params: [value],
 						line: instructionSetStartLine + lineNumber + 2,
 						pos: position + totalPosition,
+						await: false
 					});
 				} else {
-					result.errors.push({ error: 'Unexpected debug.log format ("debug.log(myValue)"), or missing ";"', pos: position + totalPosition + debugMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+					result.errors.push({ error: 'Unexpected log format ("log(myValue)"), or missing ";"', pos: position + totalPosition + debugMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
+				}
+			} else if (waitMatch) {
+				const waitMatchFormat = section.substr(position).match(/^wait\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|((-?)(([0-9]+(\.([0-9]+))?)|(\.([0-9]+)))))( *)\)END_OF_SECTION$/g) as RegExpMatchArray;
+				if (waitMatchFormat) {
+					const waitName = 'wait -' + name + '-' + (instructionSetStartLine + lineNumber + 2) + '-' + (position + totalPosition + waitMatch[0].length);
+
+					let value = waitMatchFormat[0].replace(/\s/g, '').replace('wait(', '').replace(')END_OF_SECTION', '');
+					const parsedValue = Number.parseFloat(value);
+					if(!Number.isNaN(parsedValue)) {
+						const subValueName = waitName + '-value';
+						result.values.push({
+							name: subValueName,
+							type: ValueType.number,
+							value: parsedValue,
+							line: instructionSetStartLine + lineNumber + 2,
+							pos: position + totalPosition
+						});
+						value = subValueName;
+					}
+
+					result.instructions.push({
+						type: InstructionType.Wait,
+						params: [value],
+						line: instructionSetStartLine + lineNumber + 2,
+						pos: position + totalPosition,
+						await: false
+					});
+				} else {
+					result.errors.push({ error: 'Unexpected wait format ("wait(myValue)"), or missing ";"', pos: position + totalPosition + waitMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
 				}
 
 			} else if (mutateMatch) {
@@ -1245,6 +1349,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 						params: [valueName, evaluationValueName],
 						line: instructionSetStartLine + lineNumber + 2,
 						pos: position + totalPosition,
+						await: false
 					});
 				} else if (numberMatch) {
 					const valueSplit = numberMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split(/=(.+)/g);
@@ -1265,6 +1370,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 						params: [valueName, numberValueName],
 						line: instructionSetStartLine + lineNumber + 2,
 						pos: position + totalPosition,
+						await: false
 					});
 				} else if (valueMatch) {
 					const valueSplit = valueMatch[0].replace(/\s/g, '').replace('END_OF_SECTION', '').split(/=(.+)/g);
@@ -1276,6 +1382,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 						params: [valueName, value],
 						line: instructionSetStartLine + lineNumber + 2,
 						pos: position + totalPosition,
+						await: false
 					});
 				} else {
 					result.errors.push({ error: 'Incorrect evaluation/number format or missing ";"', pos: position + totalPosition + mutateMatch[0].length, line: instructionSetStartLine + lineNumber + 2 });
@@ -1365,7 +1472,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 						continueSearch = false;
 					}
 				}
-				const conditionSuccessInstructions = parseInstructionSet(instructionSetStartLine + lineNumber + 1, functionLines, conditionInstructionSetSucceedName);
+				const conditionSuccessInstructions = parseInstructionSet(instructionSetStartLine + lineNumber + 1, functionLines, conditionInstructionSetSucceedName, async);
 				resultList.push(...conditionSuccessInstructions);
 
 				if (functionLineNumber + 1 < lines.length) {
@@ -1407,7 +1514,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 								continueSearch = false;
 							}
 						}
-						const conditionFailedInstructions = parseInstructionSet(instructionSetStartLine + lineNumber + 1 + ifLength, functionLines, conditionInstructionSetFailedName);
+						const conditionFailedInstructions = parseInstructionSet(instructionSetStartLine + lineNumber + 1 + ifLength, functionLines, conditionInstructionSetFailedName, async);
 						resultList.push(...conditionFailedInstructions);
 
 					}
@@ -1418,6 +1525,7 @@ function parseInstructionSet(instructionSetStartLine: number, lines: string[], n
 					params: [conditionEvaluationName, conditionInstructionSetSucceedName, conditionInstructionSetFailedName],
 					line: instructionSetStartLine + lineNumber + 2,
 					pos: position + totalPosition,
+					await: async
 				});
 
 			} else {
@@ -1464,8 +1572,6 @@ function getSystemConfigType(value: string): SystemConfigType {
 	switch (value) {
 		case 'ScreenHeight': return SystemConfigType.screenHeight;
 		case 'ScreenWidth': return SystemConfigType.screenWidth;
-		case 'TargetMainMillis': return SystemConfigType.targetMainMillis;
-		case 'TargetRenderMillis': return SystemConfigType.targetRenderMillis;
 		case 'CurrentMillis': return SystemConfigType.currentMillis;
 		case 'IsZigZag': return SystemConfigType.isZigZag;
 	}

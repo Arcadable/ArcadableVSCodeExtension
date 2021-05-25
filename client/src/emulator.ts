@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { Subscription, Subject, BehaviorSubject, zip } from 'rxjs';
 import { auditTime } from 'rxjs/operators'
-import { Arcadable, SystemConfig } from 'arcadable-shared/';
+import { Arcadable, SystemConfig } from 'arcadable-shared';
 import { ArcadableCompiler, CompileResult } from './compiler';
 
 import { exportArcadable} from 'arcadable-shared/out/model/exportArcadable'
@@ -155,6 +155,10 @@ export class Emulator {
 				digitalInputs: this.compileResult.game.systemConfig.digitalInputPinsAmount,
 				analogInputs: this.compileResult.game.systemConfig.analogInputPinsAmount
 			});
+			currentPanel.webview.postMessage({
+				command: 'setSpeakers',
+				speakers: this.compileResult.game.systemConfig.speakerOutputAmount,
+			});
 		}
 	}
 
@@ -166,28 +170,32 @@ export class Emulator {
 		const compileResult = await this.compile();
 		const diff = process.hrtime(startTime);
 		const duration =  Math.floor((diff[0] * 1000 + diff[1] / 1000000)*1000)/1000;
-		if (!compileResult.game || compileResult.parseErrors.length > 0 || compileResult.compileErrors.length > 0) {
+		if (!compileResult || !compileResult.game || compileResult.parseErrors.length > 0 || compileResult.compileErrors.length > 0) {
 			this.log.appendLine('Arcadable compilation completed with errors in ' + duration + 'ms.')
 
 			let error = 'Could not complete code compilation. ';
-			if (compileResult.parseErrors.length > 0) {
-				error += compileResult.parseErrors.length + ' file parsing errors. ';
-			}
-			if (compileResult.compileErrors.length > 0) {
-				error += compileResult.compileErrors.length + ' compilation errors. ';
+			if(!!compileResult) {
+				if (compileResult.parseErrors.length > 0) {
+					error += compileResult.parseErrors.length + ' file parsing errors. ';
+				}
+				if (compileResult.compileErrors.length > 0) {
+					error += compileResult.compileErrors.length + ' compilation errors. ';
+				}
 			}
 			vscode.window.showErrorMessage(error);
-			if (compileResult.parseErrors.length > 0) {
-				this.log.appendLine('Parsing errors (' + compileResult.parseErrors.length + '):');
-				compileResult.parseErrors.forEach((e, i) => {
-					this.log.appendLine(i + ' - ' + e.file.replace(vscode.workspace.rootPath, '') + ':' + e.line + ':' + e.pos + ' - ' + e.error);
-				})
-			}
-			if (compileResult.compileErrors.length > 0) {
-				this.log.appendLine('Compile errors (' + compileResult.compileErrors.length + '):');
-				compileResult.compileErrors.forEach((e, i) => {
-					this.log.appendLine(i + ' - ' + e.file.replace(vscode.workspace.rootPath, '') + ':' + e.line + ':' + e.pos + ' - ' + e.error);
-				})
+			if(!!compileResult) {
+				if (compileResult.parseErrors.length > 0) {
+					this.log.appendLine('Parsing errors (' + compileResult.parseErrors.length + '):');
+					compileResult.parseErrors.forEach((e, i) => {
+						this.log.appendLine(i + ' - ' + e.file.replace(vscode.workspace.rootPath, '') + ':' + e.line + ':' + e.pos + ' - ' + e.error);
+					})
+				}
+				if (compileResult.compileErrors.length > 0) {
+					this.log.appendLine('Compile errors (' + compileResult.compileErrors.length + '):');
+					compileResult.compileErrors.forEach((e, i) => {
+						this.log.appendLine(i + ' - ' + e.file + ':' + e.line + ':' + e.pos + ' - ' + e.error);
+					})
+				}
 			}
 		} else {
 			vscode.window.showInformationMessage('Arcadable compiled successfully!');
@@ -195,7 +203,7 @@ export class Emulator {
 
 		}
 		this.log.show();
-		if(compileResult.game && compileResult.parseErrors.length === 0 && compileResult.compileErrors.length === 0) {
+		if(!!compileResult && compileResult.game && compileResult.parseErrors.length === 0 && compileResult.compileErrors.length === 0) {
 			this.compileResult = compileResult;
 			const game = this.compileResult.game;
 
@@ -263,7 +271,8 @@ export class Emulator {
 				mainsPerSecond: number,
 				rendersPerSecond: number,
 				digitalInputAmount: number,
-				analogInputAmount: number
+				analogInputAmount: number,
+				speakerOutputAmount: number
 			}
 		};
 		if (configDoc) {
@@ -315,6 +324,7 @@ export class Emulator {
 			false,
 			config.system.digitalInputAmount,
 			config.system.analogInputAmount,
+			config.system.speakerOutputAmount,
 			0
 		);
 
@@ -363,6 +373,9 @@ export class Emulator {
 			if (!config.system.analogInputAmount) {
 				result += '"system.analogInputAmount", ';
 			}
+			if (!config.system.speakerOutputAmount) {
+				result += '"system.speakerOutputAmount", ';
+			}
 		}
 		if (result === 'Config missing property: ') {
 			result = 'ok';
@@ -401,9 +414,16 @@ export class Emulator {
 			)
 		).toString();
 
+		const beepScriptSrcUrl = currentPanel.webview.asWebviewUri(
+			vscode.Uri.file(
+				path.join(context.extensionPath, 'client', 'src', 'js', 'beep.js')
+			)
+		).toString();
+
 		currentPanel.webview.html = fs.readFileSync(templateFilePath.fsPath, 'utf8')
 			.replace('{{styleSrc}}', styleSrcUrl)
 			.replace('{{mainScriptSrc}}', mainScriptSrcUrl)
+			.replace('{{beepScriptSrc}}', beepScriptSrcUrl)
 			.replace('{{functionScriptSrc}}', drawFunctionsScriptSrcUrl);
 
 		

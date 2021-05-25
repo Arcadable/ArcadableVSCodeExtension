@@ -1,4 +1,6 @@
+import { exec } from 'child_process';
 import { Subject, timer } from 'rxjs';
+import { CallStack, Executable } from './callStack';
 import { Instruction } from './instructions/instruction';
 import { InstructionSet } from './instructions/instructionSet';
 import { SystemConfig } from './systemConfig';
@@ -9,16 +11,22 @@ export class Arcadable {
 	instructionEmitter = new Subject<any>();
 	interruptedEmitter = new Subject<any>();
 
+	unchangedValues: {[key: number]: Value} = {};
+
     values: {[key: number]: Value} = {};
     instructions: {[key: number]: Instruction} = {};
-    instructionSets: {[key: number]: InstructionSet} = {};
+	instructionSets: {[key: number]: InstructionSet} = {};
+	setupInstructionSet: number = 0;
 	mainInstructionSet: number = 0;
 	renderInstructionSet: number = 0;
     systemConfig: SystemConfig;
 
 	prevMainMillis = 0;
 	prevRenderMillis = 0;
-    startMillis = 0;
+	startMillis = 0;
+
+	mainCallStack: CallStack = new CallStack();
+	renderCallStack: CallStack = new CallStack();
 
     constructor(
     	systemConfig: SystemConfig
@@ -28,25 +36,32 @@ export class Arcadable {
     }
 
     setGameLogic(
-    	values: {[key: number]: Value},
+		unchangedValues: {[key: number]: Value},
+		values: {[key: number]: Value},
     	instructions: {[key: number]: Instruction},
-    	instructionSets: {[key: number]: InstructionSet},
+		instructionSets: {[key: number]: InstructionSet},
+		setupInstructionSet: number,
 		mainInstructionSet: number,
 		renderInstructionSet: number
-    ) {
+    ) {		
+		Object.keys(this.unchangedValues).forEach(k => (this.unchangedValues[+k] as any).game = undefined );
 		Object.keys(this.values).forEach(k => (this.values[+k] as any).game = undefined );
 		Object.keys(this.instructions).forEach(k => (this.instructions[+k] as any).game = undefined );
 		Object.keys(this.instructionSets).forEach(k => (this.instructionSets[+k] as any).game = undefined );
-
+		
+		this.unchangedValues = unchangedValues;
     	this.values = values;
     	this.instructions = instructions;
-    	this.instructionSets = instructionSets;
+		this.instructionSets = instructionSets;
+		this.setupInstructionSet = setupInstructionSet;
 		this.mainInstructionSet = mainInstructionSet;
 		this.renderInstructionSet = renderInstructionSet;
 
     }
 
     start() {
+		this.mainCallStack = new CallStack(10000);
+		this.renderCallStack = new CallStack(10000);
 
     	Object.keys(this.values).forEach(k => {
     		if ((this.values[Number(k)] as Value).type === ValueType.evaluation) {
@@ -60,7 +75,8 @@ export class Arcadable {
 	}
 	stop(error?: {message: string, values: number[], instructions: number[]}) {
 		this.interruptedEmitter.next(error);
-    }
+	}
+
 	startRender() {
 		const timerSubscr = timer(0, this.systemConfig.targetRenderMillis).subscribe(async () => {
 			try {
@@ -76,12 +92,14 @@ export class Arcadable {
 	}
 
 	startMain() {
+		let first = true;
 		const timerSubscr = timer(0, this.systemConfig.targetMainMillis).subscribe(async () => {
 			try {
-				await this.doMainStep();
+				await this.doMainStep(first);
 			} catch (e) {
 				this.instructionEmitter.next({message: 'An unexpected error occured.'});
 			}
+			first = false;
 		});
 		const interruptSubscr = this.interruptedEmitter.subscribe(e => {
 			timerSubscr.unsubscribe();
@@ -89,40 +107,86 @@ export class Arcadable {
 		})
 	}
 
-
-    private async doMainStep() {
-    	this.systemConfig.fetchInputValues();
+    private async doMainStep(first: boolean) {
+		this.systemConfig.fetchInputValues();
+		this.mainCallStack.prepareStep();
     	const mainInstructionSet = this.instructionSets[
     		this.mainInstructionSet
 		] as InstructionSet;
+		this.mainCallStack.pushfront(...(await mainInstructionSet.getExecutables()));
 
-		const executables = mainInstructionSet.instructions.map((instructionPointer) =>
-			(async () => await this.execute(async () => await instructionPointer.execute()))
-		);
-		await executables.reduce(async (p, fn) => { await p; return fn() }, Promise.resolve())
+		if(first) {
+			const setupInstructionSet = this.instructionSets[
+				this.setupInstructionSet
+			] as InstructionSet;
+			this.mainCallStack.pushfront(...(await setupInstructionSet.getExecutables()));
+		}
 
+		this.processCallStack(this.mainCallStack);
 	}
+
 	private async doRenderStep() {
+		this.renderCallStack.prepareStep();
+
     	const renderInstructionSet = this.instructionSets[
     		this.renderInstructionSet
 		] as InstructionSet;
 
-		const executables = renderInstructionSet.instructions.map((instructionPointer) =>
-			(async () => await this.execute(async () => await instructionPointer.execute()))
-		);
-		await executables.reduce(async (p, fn) => { await p; return fn() }, Promise.resolve())
+		this.renderCallStack.pushfront(...(await renderInstructionSet.getExecutables()));
+		this.renderCallStack.pushback(new Executable(async () => {
+			this.instructionEmitter.next({command: 'renderDone'});
+			return [];
+		}, false, false, [], null, null));
+		this.processCallStack(this.renderCallStack);
 
-		this.instructionEmitter.next({command: 'renderDone'})
     }
 
+	private async processCallStack(callStack: CallStack) {
+		if(callStack.size() > 0) {
+			const executable = callStack.pop();
+			if(executable) {
+				await executable.checkWaitMillis();
 
-    async execute(action: () => Promise<(() => any)[]>) {
-		const actions = (await action()) || [];
-		const executables = actions.map((a, i) =>
-			(async () => await this.execute(a))
-		);
-		await executables.reduce(async (p, fn) => { await p; return fn() }, Promise.resolve())
-    }
+				if(!!executable.executeOnMillis) {
+
+					if(executable.executeOnMillis <= new Date().getTime()) {
+						await this.processExecutable(executable, callStack);
+					} else {
+						callStack.delayScheduledSection(executable);
+					}
+				} else {
+					await this.processExecutable(executable, callStack);
+				}
+			}
+			if (callStack.doProcessMore()) {
+				this.processCallStack(callStack);
+			}
+		}
+	}
+
+	private async processExecutable(executable: Executable, callStack: CallStack) {
+		let newExecutables = (await executable.action()).map(e => executable.parentAwait ? e.withParentAwait(executable.parentAwait) : e);
+
+		if(newExecutables.length > 0) {
+			if(executable.async) {
+				if (executable.awaiting.length > 0) {
+					const waitFor = new Executable(async () => executable.awaiting.map(e => executable.parentAwait ? e.withParentAwait(executable.parentAwait) : e), true, false, [], executable.parentAwait, null);
+					newExecutables = newExecutables.map(e => e.withParentAwait(waitFor))
+					callStack.pushfront(...newExecutables);
+					if(executable.parentAwait) {
+						callStack.pushinfrontof(executable.parentAwait, waitFor);
+					} else {
+						callStack.pushback(waitFor);
+					}
+				} else {
+					callStack.pushfront(...newExecutables);
+				}
+			} else {
+				callStack.pushfront(...newExecutables);
+			}
+		}
+	}
+
 
 
 }

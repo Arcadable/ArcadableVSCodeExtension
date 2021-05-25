@@ -1,4 +1,5 @@
 import { Arcadable } from '../arcadable';
+import { Executable } from '../callStack';
 import { Value, ValuePointer } from './../values/value';
 import { Instruction, InstructionType } from './instruction';
 import { InstructionSetPointer } from './instructionSet';
@@ -12,22 +13,23 @@ export class RunConditionInstruction extends Instruction {
         public successSet: InstructionSetPointer,
         public failSet: InstructionSetPointer,
         name: string,
-        game: Arcadable
+        game: Arcadable,
+		public await: boolean,
     ) {
-        super(ID, InstructionType.RunCondition, name, game);
+        super(ID, InstructionType.RunCondition, name, game, await);
     }
 
 
-    execute(): (() => Promise<any>)[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
-        return [async () => {
+        return [new Executable(async () => {
             if (await this.evaluationValue.getObject().isTruthy()) {
-                return this.successSet.execute();
+                return this.successSet.getExecutables();
             } else if (this.failSet) {
-                return this.failSet.execute();
+                return this.failSet.getExecutables();
             }
             return [];
-        }];
+        }, async, false, [], null, null)];
         
     }
 

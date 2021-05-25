@@ -28,7 +28,7 @@ varName: Pixel = [5, 5];
 varName: Pixel = [pixelPosXVar, pixelPosYVar];
 
 // System config value, represents system information.
-// Available values: ScreenHeight, ScreenWidth, TargetMainMillis, TargetRenderMillis, CurrentMillis, IsZigZag
+// Available values: ScreenHeight, ScreenWidth, CurrentMillis, IsZigZag
 // Truthy if value resolves to != 0
 varName: Config = ScreenHeight;
 
@@ -45,6 +45,12 @@ varName: List<Number> = [otherVarName, 2, 2.5];
 // Truthy if value at list position is truthy.
 varName: ListValue = myList[1];
 varName: ListValue = myList[otherVarName];
+
+// Image value. Represents image data.
+// the asset should be raw rgb values. In gimp, export the image as "Raw Image Data", in the "Export as.." dialog file type selection.
+// Image with/height/color are all number values.
+varName: Image = ['assets/myImage.data', imageWidth, imageHeight, imageColor];
+
 ```
 
 Implemented instructions: 
@@ -59,11 +65,12 @@ draw.fillCircle(color, radius, x, y);
 draw.drawTriangle(color, x1, y1, x2, y2, x3, y3);
 draw.fillTriangle(color, x1, y1, x2, y2, x3, y3);
 draw.drawText(color, size, text, x, y);
+draw.drawImage(myImage, x, y);
 draw.clear;
 draw.setRotation(rotation);
 
 // Writing to console
-debug.log(value);
+log(value);
 
 // Conditionals
 if (varName) {
@@ -75,6 +82,12 @@ if (varName) {
 // Executing functions
 execute(myFunction);
 
+// await an async function
+await execute(myAsyncFunction);
+
+// wait for an amount of milliseconds
+wait(myNumber);
+
 // Mutating values
 // Mutatable values: Number, ListValue (pointing to a mutable value), Pixel, String
 varName = otherVarName * 2;
@@ -84,22 +97,36 @@ varName = 5;
 All functions are global.
 Functions: 
 ```
-// Compiler requires two default functions to be present at all times.
+// Compiler requires three default functions to be present at all times.
 
-// The main function is called a certain amount of times, based on the "mainsPerSecond" property in arcadable.config.json.
+// The setup function is called once when the code is started
+setup: Function {
+
+}
+
+
+// The main function is called as often as possible
 main: Function {
 
 }
 
-// The render function is called a certain amount of times, based on the "rendersPerSecond" property in arcadable.config.json.
+// The render function is called before led color values are pushed to the leds
 render: Function {
 
 }
+
 
 // Any other functions can be defined in the same way.
 myFunction: Function {
 
 }
+
+// Async functions are also supported
+// Render and Main cannot be async
+myFunction: AsyncFunction {
+
+}
+
 ```
 
 All values and functions defined in any imported file are accessible in any file of the program (all values and functions are global, also across files).

@@ -1,6 +1,6 @@
 import { InstructionType } from '../model/instructions/instruction';
 import { ValueType } from '../model/values/value';
-import { FunctionParseResult, GetParseFunctionExecutable, ParseImport, ParseValueAnalog, ParseValueConfig, ParseValueDigital, ParseValueEval, ParseValueListAnalog, ParseValueListConfig, ParseValueListDigital, ParseValueListEval, ParseValueListNumber, ParseValueListPixel, ParseValueListString, ParseValueNumber, ParseValuePixel, ParseValueString, ValueParseResult, ParseValueListValue, ParseValueImage, ParseValueData } from './parseFunctions';
+import { FunctionParseResult, GetParseFunctionExecutable, ParseImport, ParseValueAnalog, ParseValueConfig, ParseValueDigital, ParseValueEval, ParseValueListAnalog, ParseValueListConfig, ParseValueListDigital, ParseValueListEval, ParseValueListNumber, ParseValueListPixel, ParseValueListString, ParseValueNumber, ParseValuePixel, ParseValueString, ValueParseResult, ParseValueListValue, ParseValueImage, ParseValueData, ParseValueSpeaker } from './parseFunctions';
 
 export class ArcadableParser {
     tempContent = '';
@@ -49,7 +49,7 @@ export class ArcadableParser {
     					})));
     				}
     			} else if (otherMatch) {
-    				const otherMatchWithType = section.substr(position).match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)(Number|Analog|Image|Data|Digital|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List<( *)(Number|Analog|Image|Data|Digital|Pixel|Config|String|Eval|StaticEval)( *)>)/g) as RegExpMatchArray;
+    				const otherMatchWithType = section.substr(position).match(/^([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*( *):( *)(Number|Analog|Speaker|Image|Data|Digital|Pixel|Config|String|Eval|AsyncFunction|Function|ListValue|List<( *)(Number|Analog|Speaker|Image|Data|Digital|Pixel|Config|String|Eval)( *)>)/g) as RegExpMatchArray;
     				if (otherMatchWithType) {
     					const values = otherMatchWithType[0].replace(/\s/g, '').split(':');
     					const type = values[1];
@@ -76,6 +76,15 @@ export class ArcadableParser {
     						case 'Digital': {
     							valueParseResults.push({
 									parseResult: ParseValueDigital(section.substr(position), otherMatchWithType),
+									line: lineNumber + 1,
+									pos: position + totalPosition,
+									file: fileName
+								});
+    							break;
+							}
+							case 'Speaker': {
+    							valueParseResults.push({
+									parseResult: ParseValueSpeaker(section.substr(position), otherMatchWithType),
 									line: lineNumber + 1,
 									pos: position + totalPosition,
 									file: fileName
@@ -147,7 +156,13 @@ export class ArcadableParser {
     								file: fileName
     							})));
     							break;
-    						}
+							}
+							case 'AsyncFunction': {
+								const res = GetParseFunctionExecutable(section.substr(position), otherMatchWithType, lineNumber, lines, true);
+    							functionParseResults.push(res);
+    							parsedLinesCount = res.parsedCount;
+    							break;
+							}
     						case 'Function': {
 								const res = GetParseFunctionExecutable(section.substr(position), otherMatchWithType, lineNumber, lines);
     							functionParseResults.push(res);
@@ -264,6 +279,18 @@ export class ArcadableParser {
 							}
 							case 'List<Data>': {
     							valueParseResults.push(...ParseValueListData(section.substr(position), otherMatchWithType).map(r => ({
+    								parseResult: {
+    									value: r.value,
+    									errors: r.errors
+    								},
+    								line: lineNumber + 1,
+    								pos: position + totalPosition,
+    								file: fileName
+    							})));
+    							break;
+							}
+							case 'List<Speaker>': {
+    							valueParseResults.push(...ParseValueListSpeaker(section.substr(position), otherMatchWithType).map(r => ({
     								parseResult: {
     									value: r.value,
     									errors: r.errors

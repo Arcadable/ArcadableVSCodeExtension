@@ -20,15 +20,12 @@
 				{
 					"include": "#import"
 				},
-
 				{
 					"include": "#eval"
 				},
-
 				{
 					"include": "#number"
 				},
-
 				{
 					"include": "#eval2"
 				},
@@ -36,7 +33,13 @@
 					"include": "#variable"
 				},
 				{
+					"include": "#tone"
+				},
+				{
 					"include": "#execute"
+				},
+				{
+					"include": "#wait"
 				},
 				{
 					"include": "#debug"
@@ -79,7 +82,7 @@
 			}
 		},
 		"type": {
-			"match": "(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*):(( )*?(Number|Analog|Digital|Image|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List))",
+			"match": "(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*):(( )*?(Number|Analog|Digital|Speaker|Image|Pixel|Config|String|Eval|AsyncFunction|Function|ListValue|List))",
 			"captures": {
 				"1": {
 					"name": "variable"
@@ -90,7 +93,7 @@
 			}
 		},
 		"generic": {
-			"match": "<(( )*?(Number|Analog|Digital|Image|Pixel|Config|String|Eval|StaticEval|Function|ListValue|List))>",
+			"match": "<(( )*?(Number|Analog|Digital|Speaker|Image|Pixel|Config|String|Eval|AsyncFunction|Function|ListValue|List))>",
 			"captures": {
 				"3": {
 					"name": "support.type.primitive"
@@ -168,18 +171,46 @@
 			}
 		},
 		"execute": {
-			"match": "(execute)(\\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)\\))",
+			"match": "(await( +?))?(execute)(\\(( *)(([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)( *)\\))",
 			"captures": {
 				"1": {
+					"name": "keyword.control"
+				},
+				"3": {
 					"name": "entity.name.function"
 				},
-				"4": {
+				"6": {
 					"name": "variable"
 				}
 			}
 		},
+		"tone": {
+			"match": "(await( +?))?(tone)\\(",
+			"captures": {
+				"1": {
+					"name": "keyword.control"
+				},
+				"3": {
+					"name": "entity.name.function"
+				}
+			}
+		},
+		"wait": {
+			"match": "(wait)\\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\\.([0-9]+))?)|(\\.([0-9]+))))( *)\\)",
+			"captures": {
+				"1": {
+					"name": "keyword.control"
+				},
+				"4": {
+					"name": "variable"
+				},
+				"7": {
+					"name": "constant.numeric"
+				}
+			}
+		},
 		"debug": {
-			"match": "(debug\\.log)\\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\\.([0-9]+))?)|(\\.([0-9]+))))( *)\\)",
+			"match": "(log)\\(( *)((([a-z]|[A-Z])+([a-z]|[A-Z]|[0-9])*)|(([0-9]+(\\.([0-9]+))?)|(\\.([0-9]+))))( *)\\)",
 			"captures": {
 				"1": {
 					"name": "entity.name.function"

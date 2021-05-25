@@ -3,6 +3,7 @@ import { Arcadable } from '../arcadable';
 import { ImageValue } from '../values/imageValue';
 import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 import { Instruction, InstructionType } from './instruction';
+import { Executable } from '../callStack';
 
 export class DrawImageInstruction extends Instruction {
 
@@ -13,15 +14,16 @@ export class DrawImageInstruction extends Instruction {
         public yValue: NumberValueTypePointer<NumberValueType>,
         public imageValue: ImageValueTypePointer<ImageValueType>,
         name: string,
-        game: Arcadable
+        game: Arcadable,
+		public await: boolean,
     ) {
-        super(ID, InstructionType.DrawImage, name, game);
+        super(ID, InstructionType.DrawImage, name, game, await);
     }
 
 
-    execute(): (() => Promise<any>)[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
-        return [async () => {
+        return [new Executable(async () => {
             const [
                 x,
                 y,
@@ -41,7 +43,8 @@ export class DrawImageInstruction extends Instruction {
                 keyColor: data.keyColor,
                 data: data.data
             });
-        }];
+            return [];
+        }, async, false, [], null, null)];
     }
 
 }

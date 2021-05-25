@@ -1,31 +1,23 @@
-import { Value, ValuePointer } from './../values/value';
 import { Instruction, InstructionType } from './instruction';
 import { Arcadable } from '../arcadable';
 import { Executable } from '../callStack';
+import { NumberValueType, NumberValueTypePointer } from '../values/_numberValueType';
 
-export class DebugLogInstruction extends Instruction {
+export class WaitInstruction extends Instruction {
 
     constructor(
         ID: number,
-        public logValue: ValuePointer<Value>,
+        public amountValue: NumberValueTypePointer<NumberValueType>,
         name: string,
         game: Arcadable,
-		public await: boolean,
     ) {
-        super(ID, InstructionType.DebugLog, name, game, await);
+        super(ID, InstructionType.Wait, name, game, true);
 
     }
 
 
     async getExecutables(async: boolean): Promise<Executable[]> {
-
         return [new Executable(async () => {
-            const logValue = await this.logValue.getValue();
-
-			this.game.instructionEmitter.next({
-				command: 'log',
-				value: logValue
-            });
             return [];
 		}, async, false, [], null, null)];
     }

@@ -1,4 +1,5 @@
 import { Arcadable } from '../arcadable';
+import { Executable } from '../callStack';
 import { Instruction, InstructionType } from './instruction';
 
 export class ClearInstruction extends Instruction {
@@ -6,19 +7,21 @@ export class ClearInstruction extends Instruction {
     constructor(
         ID: number,
         name: string,
-        game: Arcadable
+        game: Arcadable,
+		public await: boolean,
     ) {
-        super(ID, InstructionType.Clear, name, game);
+        super(ID, InstructionType.Clear, name, game, await);
     }
 
 
-    execute(): (() => Promise<any>)[] {
+    async getExecutables(async: boolean): Promise<Executable[]> {
 
-        return [async () => {
+        return [new Executable(async () => {
             this.game.instructionEmitter.next({
                 command: 'clear'
             });
-        }];
+            return [];
+        }, async, false, [], null, null)];
     }
 
 }

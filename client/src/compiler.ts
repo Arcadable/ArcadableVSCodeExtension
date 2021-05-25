@@ -4,8 +4,8 @@ import { SystemConfig, ArcadableParser, Arcadable, ParsedFile, ValueType, Value,
 	SystemConfigValue, TextValue, NumberValueTypePointer, NumberValueType,
 	ClearInstruction, DrawCircleInstruction, DrawLineInstruction, DrawPixelInstruction, DrawRectInstruction,
 	DrawTextInstruction, DrawTriangleInstruction, FillCircleInstruction, FillRectInstruction, FillTriangleInstruction,
-	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction,
-	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, DebugLogInstruction, FunctionParseResult,
+	MutateValueInstruction, RunConditionInstruction, RunSetInstruction, SetRotationInstruction, ToneInstruction, SpeakerOutputValue,
+	InstructionSetPointer, InstructionSet, InstructionPointer, ListDeclaration, WaitInstruction, DebugLogInstruction, FunctionParseResult,
 	ValueParseResult, DrawImageInstruction, ImageValue, DataValue, NumberArrayValueTypePointer} from 'arcadable-shared';
 import { ValueArrayValueTypePointer, ValueArrayValueType } from 'arcadable-shared/out/model/values/valueArrayValueType';
 import { Console } from 'console';
@@ -82,9 +82,25 @@ export class ArcadableCompiler {
 
 				this.compileResult.compileErrors = gameData.compileErrors;
 				if (this.compileResult.compileErrors.length === 0) {
+					const setupInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'setup') !== -1);
 					const mainInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
 					const renderInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'render') !== -1);
-	
+					
+					if (setupInstructionSet === -1) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Cannot find "Setup" function'
+						})
+					} else if(gameData.compressedInstructionSets[setupInstructionSet].async) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Setup function cannot be asynchronous'
+						})
+					}
 					if (mainInstructionSet === -1) {
 						this.compileResult.compileErrors.push({
 							file: '',
@@ -92,7 +108,14 @@ export class ArcadableCompiler {
 							pos: 0,
 							error: 'Cannot find "Main" function'
 						})
-					} 
+					} else if(gameData.compressedInstructionSets[mainInstructionSet].async) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Main function cannot be asynchronous'
+						})
+					}
 					if (renderInstructionSet === -1) {
 						this.compileResult.compileErrors.push({
 							file: '',
@@ -100,9 +123,16 @@ export class ArcadableCompiler {
 							pos: 0,
 							error: 'Cannot find "Render" function'
 						})
-					} 
+					} else if(gameData.compressedInstructionSets[renderInstructionSet].async) {
+						this.compileResult.compileErrors.push({
+							file: '',
+							line: 0,
+							pos: 0,
+							error: 'Render function cannot be asynchronous'
+						})
+					}
 					
-					if (mainInstructionSet !== -1 && renderInstructionSet !== -1) {
+					if (setupInstructionSet !== -1 && mainInstructionSet !== -1 && renderInstructionSet !== -1) {
 						this.compileResult.assignGameData(gameData);
 					}
 				}
@@ -181,6 +211,7 @@ export class ArcadableCompiler {
 		let compressedInstructions: {
 			type: InstructionType;
 			params: string[];
+			await: boolean;
 			linked: {
 				line: number;
 				pos: number;
@@ -189,6 +220,7 @@ export class ArcadableCompiler {
 		}[] = [];
 		let compressedInstructionSets: {
 			instructions: number[];
+			async: boolean;
 			linked: {
 				name: string;
 			}[];
@@ -196,11 +228,16 @@ export class ArcadableCompiler {
 		data.instructionSets.forEach((is, index) => {
 			const instructions: number[] = [];
 			is.instructions.forEach((i, index2) => {
-				let instructionIndex = compressedInstructions.findIndex(ic => ic.type === i.type && JSON.stringify(ic.params) === JSON.stringify(i.params));
+				let instructionIndex = compressedInstructions.findIndex(ic =>
+					ic.type === i.type &&
+					JSON.stringify(ic.params) === JSON.stringify(i.params) &&
+					ic.await === i.await
+				);
 				if (instructionIndex === -1) {
 					instructionIndex = compressedInstructions.push({
 						type: i.type,
 						params: i.params,
+						await: i.await,
 						linked: []
 					}) - 1;
 				}
@@ -210,17 +247,19 @@ export class ArcadableCompiler {
 			})
 
 			let instructionSetIndex = compressedInstructionSets.findIndex(isc => {
-				if (isc.instructions === instructions) return true;
+				if (isc.instructions === instructions && isc.async === is.async) return true;
 				if (isc.instructions == null || instructions == null) return false;
 				if (isc.instructions.length != instructions.length) return false;		  
 				for (var i = 0; i < isc.instructions.length; ++i) {
 				  if (isc.instructions[i] !== instructions[i]) return false;
 				}
+				if(isc.async !== is.async) return false;
 				return true;
 			});
 			if (instructionSetIndex === -1) {
 				instructionSetIndex = compressedInstructionSets.push({
 					instructions,
+					async: is.async,
 					linked: []
 				}) - 1;
 			}
@@ -446,7 +485,8 @@ export class ArcadableCompiler {
 			compressedInstructions = compressedInstructions.reduce((acc, curr, oldIndex) => {
 				const existingIndex = acc.findIndex(existing =>
 					existing.type === curr.type &&
-					JSON.stringify(existing.params) === JSON.stringify(curr.params)
+					JSON.stringify(existing.params) === JSON.stringify(curr.params) &&
+					existing.await === curr.await
 				);
 				if (existingIndex !== -1) {
 					instrIndexChanges[oldIndex] = existingIndex;
@@ -459,6 +499,7 @@ export class ArcadableCompiler {
 			}, [] as {
 				type: InstructionType;
 				params: string[];
+				await: boolean;
 				linked: {
 					line: number;
 					pos: number;
@@ -479,7 +520,8 @@ export class ArcadableCompiler {
 			const instrSetIndexChanges = {};
 			compressedInstructionSets = compressedInstructionSets.reduce((acc, curr, oldIndex) => {
 				const existingIndex = acc.findIndex(existing =>
-					JSON.stringify(existing.instructions) === JSON.stringify(curr.instructions)
+					JSON.stringify(existing.instructions) === JSON.stringify(curr.instructions) &&
+					existing.async === curr.async
 				);
 				if (existingIndex !== -1) {
 					instrSetIndexChanges[oldIndex] = existingIndex;
@@ -491,6 +533,7 @@ export class ArcadableCompiler {
 				return existingIndex !== -1 ? acc : [...acc, curr];
 			}, [] as {
 				instructions: number[];
+				async: boolean;
 				linked: {
 					name: string;
 				}[];
@@ -602,6 +645,23 @@ export class ArcadableCompiler {
 				}
 
 				i.instructions.forEach(instruction => {
+
+					if (instruction.await &&
+						(
+							instruction.type !== InstructionType.RunCondition &&
+							instruction.type !== InstructionType.RunSet &&
+							instruction.type !== InstructionType.Wait &&
+							instruction.type !== InstructionType.Tone
+						)
+					) {
+						data.compileErrors.push({
+							file: instruction.file,
+							line: instruction.line,
+							pos: instruction.pos,
+							error: 'Instruction type is not awaitable'
+						});
+					}
+
 					switch (instruction.type) {
 						case InstructionType.DrawCircle: 
 						case InstructionType.DrawLine: 
@@ -629,11 +689,29 @@ export class ArcadableCompiler {
 							break;
 						}
 						case InstructionType.RunCondition: {
-							data.compileErrors.push(...this.checkInstructionSetReferences([instruction.params[1], instruction.params[1]], data, instruction.file, instruction.line, instruction.pos));
+							data.compileErrors.push(...this.checkInstructionSetReferences([instruction.params[1], instruction.params[1]], instruction.await, data, instruction.file, instruction.line, instruction.pos));
+							if(instruction.await && !i.async) {
+								data.compileErrors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Cannot use await in block that is not asynchronous'
+								});
+							}
+							
 							break;
 						} 
 						case InstructionType.RunSet: {
-							data.compileErrors.push(...this.checkInstructionSetReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
+							data.compileErrors.push(...this.checkInstructionSetReferences(instruction.params, instruction.await, data, instruction.file, instruction.line, instruction.pos));
+							if(instruction.await && !i.async) {
+								data.compileErrors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Cannot use await in block that is not asynchronous'
+								});
+							}
+							
 							break;
 						}
 						case InstructionType.DrawText: {
@@ -645,6 +723,17 @@ export class ArcadableCompiler {
 							data.compileErrors.push(...this.checkNumbericalReferences(instruction.params.filter((p, i) => i !== 2), data, instruction.file, instruction.line, instruction.pos));
 							data.compileErrors.push(...this.checkImageReferences([instruction.params[2]], data, instruction.file, instruction.line, instruction.pos));
 							break;
+						}
+						case InstructionType.Wait: {
+							data.compileErrors.push(...this.checkNumbericalReferences([instruction.params[0]], data, instruction.file, instruction.line, instruction.pos));
+							if(instruction.await && !i.async) {
+								data.compileErrors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Cannot use wait in block that is not asynchronous'
+								});
+							}
 						}
 						case InstructionType.DebugLog: {
 							const valueIndex = data.values.findIndex(v2 => v2.name === instruction.params[0]);
@@ -658,9 +747,20 @@ export class ArcadableCompiler {
 									error: 'Value "' + instruction.params[0] + '" with type "List" cannot be used here.'
 								});
 							}
-
 							break;
 						}
+						case InstructionType.Tone: {
+							data.compileErrors.push(...this.checkNumbericalReferences(instruction.params, data, instruction.file, instruction.line, instruction.pos));
+							if(instruction.await && !i.async) {
+								data.compileErrors.push({
+									file: instruction.file,
+									line: instruction.line,
+									pos: instruction.pos,
+									error: 'Cannot use await in block that is not asynchronous'
+								});
+							}
+							break;
+						} 
 					}
 				});
 			}
@@ -729,7 +829,7 @@ export class ArcadableCompiler {
 		return errors;
 	}
 
-	checkInstructionSetReferences(instructionSets: string[], data: ParsedProgram, file: string, line: number, pos: number) {
+	checkInstructionSetReferences(instructionSets: string[], await: boolean, data: ParsedProgram, file: string, line: number, pos: number) {
 		const errors = [];
 		instructionSets.forEach(i1 => {
 			const instructionSetIndex = data.instructionSets.findIndex(i2 => i2.name === i1)
@@ -739,6 +839,13 @@ export class ArcadableCompiler {
 					line: line,
 					pos: pos,
 					error: 'Function with identifier "' + i1 + '" cannot be found.'
+				});
+			} else if(await && !data.instructionSets[instructionSetIndex].async) {
+				errors.push({
+					file: file,
+					line: line,
+					pos: pos,
+					error: 'Cannot await synchronous function "' + i1 + '".'
 				});
 			}
 		});
@@ -767,7 +874,8 @@ export class ParsedProgram {
 	}[] = [];
 	data: {[key: string]: number[]} = {};
     instructionSets: {
-        name: string;
+		name: string;
+		async: boolean;
         instructions: {
             line: number;
             pos: number;
@@ -775,6 +883,7 @@ export class ParsedProgram {
             type: InstructionType;
 			params: string[];
 			compressedIndex?: number;
+			await: boolean;
 		}[];
 		compressedIndex?: number;
     }[] = [];
@@ -792,7 +901,8 @@ export class ParsedProgram {
     }[] = [];
     compressedInstructions: {
         type: InstructionType,
-        params: string[],
+		params: string[],
+		await: boolean,
         linked:{
             line: number;
             pos: number;
@@ -801,6 +911,7 @@ export class ParsedProgram {
     }[] = [];
     compressedInstructionSets: {
 		instructions: number[],
+		async: boolean;
 		linked: {
 			name: string;
 		}[]
@@ -837,12 +948,14 @@ export class ParsedProgram {
 				this.instructionSets.push(
 					...functions.map(f => ({
 						name: f.name,
+						async: f.async,
 						instructions: f.instructions.map(i => ({
 							line: i.line,
 							pos: i.pos,
 							file: e.file,
 							type: i.type,
-							params: i.params
+							params: i.params,
+							await: i.await
 						}))
 					}))
 				);
@@ -953,7 +1066,261 @@ export class CompileResult {
 	
 	assignGameData(gameData: ParsedProgram) {
 		this.parsedProgram = gameData;
-		const values = gameData.compressedValues.map((v, i) => {
+		const values = this.getValuesMap(gameData);
+		const unchangedValues = this.getValuesMap(gameData);
+
+
+		const instructions = gameData.compressedInstructions.map((inst, i) => {
+			switch(inst.type) {
+				case InstructionType.Clear : {
+					return new ClearInstruction(i, '', this.game, inst.await);
+				}
+				case InstructionType.DrawCircle : {
+					return new DrawCircleInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.DrawLine : {
+					return new DrawLineInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.DrawPixel : {
+					return new DrawPixelInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.DrawImage : {
+					return new DrawImageInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new ImageValueTypePointer<ImageValueType>(+inst.params[2], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.DrawRect : {
+					return new DrawRectInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.DrawText : {
+					return new DrawTextInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.DrawTriangle : {
+					return new DrawTriangleInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[5], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[6], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.FillCircle : {
+					return new FillCircleInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.FillRect : {
+					return new FillRectInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.FillTriangle : {
+					return new FillTriangleInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[5], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[6], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.MutateValue : {
+					if (values[+inst.params[0]].type === ValueType.text) {
+						return new MutateValueInstruction(
+							i,
+							new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[0], this.game),
+							new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[1], this.game),
+							'',
+							this.game,
+							inst.await
+						);
+					} else if (values[+inst.params[0]].type === ValueType.listDeclaration) {
+						return new MutateValueInstruction(
+							i,
+							new ValueArrayValueTypePointer<ValueArrayValueType>(+inst.params[0], this.game),
+							new ValueArrayValueTypePointer<ValueArrayValueType>(+inst.params[1], this.game),
+							'',
+							this.game,
+							inst.await
+						);
+					} else {
+						return new MutateValueInstruction(
+							i,
+							new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+							new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+							'',
+							this.game,
+							inst.await
+						);
+					}
+
+				}
+				case InstructionType.RunCondition : {
+					return new RunConditionInstruction(
+						i,
+						new NumberValueTypePointer<EvaluationValue>(+inst.params[0], this.game),
+						new InstructionSetPointer(+inst.params[1], this.game),
+						inst.params[2].length > 0 ? new InstructionSetPointer(+inst.params[2], this.game) : null,
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.RunSet : {
+					return new RunSetInstruction(
+						i,
+						new InstructionSetPointer(+inst.params[0], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.SetRotation : {
+					return new SetRotationInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.Tone : {
+					return new ToneInstruction(
+						i,
+						new NumberValueTypePointer<SpeakerOutputValue>(+inst.params[0], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
+						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.DebugLog : {
+					return new DebugLogInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						'',
+						this.game,
+						inst.await
+					);
+				}
+				case InstructionType.Wait : {
+					return new WaitInstruction(
+						i,
+						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
+						'',
+						this.game
+					);
+				}
+			}
+		});
+		const instructionSets = gameData.compressedInstructionSets.map((is, i) => new InstructionSet(
+			i,
+			is.instructions.length,
+			is.instructions.map(inst => 
+				new InstructionPointer(inst, this.game)
+			),
+			is.async,
+			'',
+			this.game
+		));
+		const setupInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'setup') !== -1);
+		const mainInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
+		const renderInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'render') !== -1);
+
+		this.game.setGameLogic(
+			unchangedValues,
+			values,
+			instructions,
+			instructionSets,
+			setupInstructionSet,
+			mainInstructionSet,
+			renderInstructionSet
+		);
+	}
+
+	getValuesMap(gameData: ParsedProgram): {[key: number]: Value} {
+		return gameData.compressedValues.map((v, i) => {
 			switch(v.type) {
 				
 				case ValueType.analogInputPointer: {
@@ -961,6 +1328,9 @@ export class CompileResult {
 				}
 				case ValueType.digitalInputPointer: {
 					return new DigitalInputValue(i, +v.value, '', this.game);
+				}
+				case ValueType.speakerOutputPointer: {
+					return new SpeakerOutputValue(i, +v.value, '', this.game);
 				}
 				case ValueType.evaluation: {
 					return new EvaluationValue(
@@ -1056,211 +1426,5 @@ export class CompileResult {
 				}
 			}
 		});
-		const instructions = gameData.compressedInstructions.map((inst, i) => {
-			switch(inst.type) {
-				case InstructionType.Clear : {
-					return new ClearInstruction(i, '', this.game);
-				}
-				case InstructionType.DrawCircle : {
-					return new DrawCircleInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.DrawLine : {
-					return new DrawLineInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.DrawPixel : {
-					return new DrawPixelInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.DrawImage : {
-					return new DrawImageInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new ImageValueTypePointer<ImageValueType>(+inst.params[2], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.DrawRect : {
-					return new DrawRectInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.DrawText : {
-					return new DrawTextInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[2], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.DrawTriangle : {
-					return new DrawTriangleInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[5], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[6], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.FillCircle : {
-					return new FillCircleInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.FillRect : {
-					return new FillRectInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.FillTriangle : {
-					return new FillTriangleInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[2], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[3], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[4], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[5], this.game),
-						new NumberValueTypePointer<NumberValueType>(+inst.params[6], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.MutateValue : {
-					if (values[+inst.params[0]].type === ValueType.text) {
-						return new MutateValueInstruction(
-							i,
-							new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[0], this.game),
-							new ValueArrayValueTypePointer<TextValue<NumberValueType>>(+inst.params[1], this.game),
-							'',
-							this.game
-						);
-					} else if (values[+inst.params[0]].type === ValueType.listDeclaration) {
-						return new MutateValueInstruction(
-							i,
-							new ValueArrayValueTypePointer<ValueArrayValueType>(+inst.params[0], this.game),
-							new ValueArrayValueTypePointer<ValueArrayValueType>(+inst.params[1], this.game),
-							'',
-							this.game
-						);
-					} else {
-						return new MutateValueInstruction(
-							i,
-							new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-							new NumberValueTypePointer<NumberValueType>(+inst.params[1], this.game),
-							'',
-							this.game
-						);
-					}
-
-				}
-				case InstructionType.RunCondition : {
-					return new RunConditionInstruction(
-						i,
-						new NumberValueTypePointer<EvaluationValue>(+inst.params[0], this.game),
-						new InstructionSetPointer(+inst.params[1], this.game),
-						inst.params[2].length > 0 ? new InstructionSetPointer(+inst.params[2], this.game) : null,
-						'',
-						this.game
-					);
-				}
-				case InstructionType.RunSet : {
-					return new RunSetInstruction(
-						i,
-						new InstructionSetPointer(+inst.params[0], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.SetRotation : {
-					return new SetRotationInstruction(
-						i,
-						new NumberValueTypePointer<NumberValueType>(+inst.params[0], this.game),
-						'',
-						this.game
-					);
-				}
-				case InstructionType.DebugLog : {
-					return new DebugLogInstruction(
-						i,
-						new NumberValueTypePointer<Value>(+inst.params[0], this.game),
-						'',
-						this.game
-					);
-				}
-			}
-		});
-		const instructionSets = gameData.compressedInstructionSets.map((is, i) => new InstructionSet(
-			i,
-			is.instructions.length,
-			is.instructions.map(inst => 
-				new InstructionPointer(inst, this.game)
-			),
-			'',
-			this.game
-		));
-		const mainInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'main') !== -1);
-		const renderInstructionSet = gameData.compressedInstructionSets.findIndex(is => is.linked.findIndex(l => l.name.toLowerCase() === 'render') !== -1);
-
-		this.game.setGameLogic(
-			values,
-			instructions,
-			instructionSets,
-			mainInstructionSet,
-			renderInstructionSet
-		);
 	}
 }
